@@ -299,7 +299,8 @@ with gr.Blocks(title="Train Studio") as demo:
         train_file = gr.Textbox(label="Train file name", value="train.jsonl")
         val_file = gr.Textbox(label="Val file name", value="val.jsonl")
         job_name = gr.Textbox(label="Job name (ชื่อ output folder — อัตโนมัติจาก model+dataset แก้ได้)",
-                              value=state_val("job_name", "train_job"))
+                              value=state_val("job_name", auto_job_name(
+                                  state_val("model", DEFAULT_MODEL), state_val("dataset", DEFAULT_DATA))))
         preview_btn = gr.Button("👀 Preview Dataset", variant="secondary")
         preview_out = gr.Markdown()
         preview_btn.click(do_preview, inputs=[model, dataset, hf_token, train_file, val_file], outputs=preview_out)
