@@ -75,6 +75,26 @@ def get_python_env():
     return info
 
 
+def check_subprocess_python():
+    """Check whether the python used for training subprocess has torch/unsloth.
+    Returns (ok: bool, msg: str)."""
+    import subprocess as sp
+    import sys
+    py = os.environ.get("PYTHON") or sys.executable
+    try:
+        r = sp.run(
+            [py, "-c", "import torch, transformers; import unsloth; print('OK')"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if r.returncode == 0:
+            return True, f"Subprocess python ({py}) มี torch/transformers/unsloth ✅"
+        err = (r.stderr or r.stdout).strip().splitlines()
+        detail = err[-1][:200] if err else "unknown error"
+        return False, f"Subprocess python ({py}) ขาด dependency:\n  {detail}\n\nวิธีแก้: ./venv/bin/pip install torch unsloth (หรือรัน app ด้วย PYTHON=<venv ที่มี torch>/bin/python)"
+    except Exception as e:
+        return False, f"ไม่สามารถตรวจ subprocess python ({py}): {e}"
+
+
 def hardware_summary():
     """Full summary used by the UI."""
     gpus = get_gpus()
@@ -96,4 +116,6 @@ def hardware_summary():
     lines.append(f"**Disk ({disk.get('total_gb', '?')} GB):** {disk.get('free_gb', '?')} GB free")
     lines.append(f"\n**Env:** python {env.get('python')} | torch {env.get('torch')} (cuda={env.get('cuda_available')}) | "
                  f"transformers {env.get('transformers')} | peft {env.get('peft')} | unsloth {env.get('unsloth')}")
+    ok, msg = check_subprocess_python()
+    lines.append(f"\n**Subprocess check:** {msg}")
     return "\n".join(lines)

@@ -224,6 +224,11 @@ class TrainerManager:
     def start(self, cfg: TrainingConfig):
         if self.running:
             return {"error": "Training already running"}
+        # verify subprocess python has torch/unsloth before launching
+        from .hardware import check_subprocess_python
+        ok, msg = check_subprocess_python()
+        if not ok:
+            return {"error": msg}
         script = write_train_script(cfg)
         self.cfg = cfg
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")

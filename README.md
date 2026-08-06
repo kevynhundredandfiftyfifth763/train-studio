@@ -102,6 +102,22 @@ ssh -L 7860:localhost:7860 -p <port> user@<host>
 
 ## ⚠️ ข้อควรระวัง (จากประสบการณ์จริง)
 
+### 🔧 แก้ปัญหา "No module named torch" (ตอนกด Start Training)
+
+สาเหตุ: subprocess python (ที่ใช้รันสคริปต์เทรน) ไม่มี torch/unsloth — UI ตรวจได้ที่ **Hardware tab → "Subprocess check"**
+
+วิธีแก้ (เลือก 1):
+```bash
+# 1. ติดตั้งลง venv ของ train-studio (แนะนำ — ทำครั้งเดียว)
+./venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cu130
+./venv/bin/pip install unsloth
+
+# 2. หรือรัน app ด้วย PYTHON env ชี้ไป venv ที่มี torch อยู่แล้ว
+PYTHON=/path/to/venv-with-torch/bin/python ./venv/bin/python app.py
+```
+
+> install.sh จัดการข้อนี้ให้อัตโนมัติ (ตรวจ CUDA → ติดตั้ง torch + unsloth)
+
 - **qwen3_5 ต้อง BF16 เท่านั้น** — GDN (linear_attn) layers ทำ NaN grad norms ใน FP16
 - **qwen3_5 target modules** ต้องเพิ่ม `in_proj_qkv, out_proj, in_proj_z` (นอกจาก q/k/v/o/gate/up/down) — ไม่งั้น 24/32 layers ได้ LoRA แค่ที่ MLP
 - **Multimodal tokenizer** (Qwen3.5/Qwen3VL) — ห้ามเรียก `tokenizer(text)` ตรงๆ (มันคิดว่า text เป็น image URL) — ใช้ `tokenizer.tokenizer` (raw) — ตัว generate script จัดการให้แล้ว
