@@ -3,12 +3,13 @@ import os
 import re
 import signal
 import subprocess
+import sys
 import time
 from datetime import datetime
 
 from .config import TrainingConfig
 
-PYTHON = os.environ.get("PYTHON", "python3")
+PYTHON = os.environ.get("PYTHON") or sys.executable
 
 
 def generate_train_script(cfg: TrainingConfig) -> str:

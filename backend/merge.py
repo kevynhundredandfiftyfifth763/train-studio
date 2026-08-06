@@ -2,9 +2,10 @@
 import os
 import subprocess
 import json
+import sys
 from datetime import datetime
 
-PYTHON = os.environ.get("PYTHON", "python3")
+PYTHON = os.environ.get("PYTHON") or sys.executable
 
 
 def generate_merge_script(base_model, adapter, scale, output_dir, gpus):
