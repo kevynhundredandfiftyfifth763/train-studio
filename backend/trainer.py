@@ -189,7 +189,7 @@ class SaveCB(TrainerCallback):
 trainer.add_callback(SaveCB(SAVE_EVERY, OUT))
 
 resume_ckpt = None
-if {str(cfg.resume).lower()}:
+if {str(cfg.resume)}:
     if "{cfg.resume_ckpt}":
         resume_ckpt = r"{cfg.resume_ckpt}"
         log.info(f"Resuming from selected checkpoint: {{resume_ckpt}}")
