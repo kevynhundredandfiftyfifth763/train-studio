@@ -92,10 +92,19 @@ def browse_current(path):
     return suggest_path(p)
 
 
-def do_log():
-    log_text = trainer.tail_log(50)
+def do_log(n=25):
+    """Last N lines (auto-refresh friendly — short enough not to jump)."""
+    log_text = trainer.tail_log(n)
     if not log_text.strip():
         return "*(ยังไม่มี log — กด Start Training)*"
+    return "```\n" + log_text.rstrip() + "\n```"
+
+
+def do_full_log():
+    """Full log (manual — for reading errors)."""
+    log_text = trainer.tail_log(500)
+    if not log_text.strip():
+        return "*(ยังไม่มี log)*"
     return "```\n" + log_text.rstrip() + "\n```"
 
 
@@ -269,7 +278,7 @@ with gr.Blocks(title="Train Studio") as demo:
     # ---------------- Train ----------------
     with gr.Tab("🚀 Train"):
         with gr.Row():
-            resume_ck = gr.Checkbox(value=True, label="↩️ Resume จาก checkpoint ล่าสุด (ถ้ามี)")
+            resume_ck = gr.Checkbox(value=False, label="↩️ Resume จาก checkpoint ล่าสุด (ถ้ามี)")
             start_btn = gr.Button("▶️ Start Training", variant="primary")
             stop_btn = gr.Button("⏹️ Stop", variant="stop")
             refresh_btn = gr.Button("🔄 Refresh")
@@ -280,7 +289,10 @@ with gr.Blocks(title="Train Studio") as demo:
             scan_ckpt_btn = gr.Button("🔍 Scan", scale=1)
         gpu_vram_out = gr.Markdown("**GPU VRAM (live):** *(กด Refresh หรือรอ auto-update)*")
         status_out = gr.Markdown("**Status:** idle")
-        log_out = gr.Markdown("*(log จะแสดงเมื่อกด Refresh หรือ Start — อัปเดตแบบ manual เพื่อไม่ให้เด้งขึ้นบน)*")
+        log_out = gr.Markdown("*(log จะแสดงอัตโนมัติ — อ่านเต็มได้ที่ Full Log ด้านล่าง)*")
+        with gr.Accordion("📜 Full Log (อ่าน error เต็ม)", open=False):
+            full_log_btn = gr.Button("🔄 Refresh Full Log")
+            full_log_out = gr.Markdown("*(กดปุ่มเพื่อโหลด log เต็ม)*")
         start_btn.click(
             do_start,
             inputs=[gpus, model, dataset, hf_token, job_name, lora_r, lora_alpha, lora_dropout,
@@ -294,10 +306,12 @@ with gr.Blocks(title="Train Studio") as demo:
         refresh_btn.click(do_status, outputs=status_out)
         refresh_btn.click(do_log, outputs=log_out)
         refresh_btn.click(do_gpu_vram, outputs=gpu_vram_out)
-        # auto refresh status + GPU VRAM ทุก 5s (log แบบ manual — กันเด้ง)
+        full_log_btn.click(do_full_log, outputs=full_log_out)
+        # auto refresh status + GPU VRAM + log (last 25 lines) ทุก 5s
         timer = gr.Timer(5)
         timer.tick(do_status, outputs=status_out)
         timer.tick(do_gpu_vram, outputs=gpu_vram_out)
+        timer.tick(do_log, outputs=log_out)
 
     # ---------------- Tools ----------------
     with gr.Tab("🛠️ Tools"):
