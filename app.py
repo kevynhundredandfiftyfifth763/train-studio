@@ -203,6 +203,11 @@ def list_checkpoints():
     return ckpts
 
 
+def checkpoint_choices():
+    """Dropdown choices: ตัวเลือก 'ไม่เลือก' แรก + รายการ checkpoint จริง."""
+    return [("", "— ไม่เลือก (เริ่มใหม่) —")] + [(c, c) for c in list_checkpoints()]
+
+
 def do_start(gpus, model, dataset, hf_token, job_name, lora_r, lora_alpha, lora_dropout,
              target_modules, extra_modules, max_seq, lr, epochs, max_steps, batch, grad_accum,
              warmup, wd, scheduler, optim, bf16, fp16, load4bit, save_every, save_limit,
@@ -394,7 +399,7 @@ with gr.Blocks(title="Train Studio") as demo:
         with gr.Row():
             resume_ckpt_dd = gr.Dropdown(
                 label="เลือก checkpoint ที่จะ resume (ว่าง = เริ่มใหม่ ไม่ resume)",
-                choices=list_checkpoints(), allow_custom_value=True, scale=4)
+                choices=checkpoint_choices(), allow_custom_value=True, scale=4)
             scan_ckpt_btn = gr.Button("🔍 Scan", scale=1)
         gpu_vram_out = gr.Markdown("**GPU VRAM (live):** *(กด Refresh หรือรอ auto-update)*")
         ckpt_out = gr.Markdown("**Checkpoints:** *(กด Refresh หรือรอ auto-update)*")
@@ -411,7 +416,7 @@ with gr.Blocks(title="Train Studio") as demo:
                     custom_vram, vram_per_gpu, resume_ck, resume_ckpt_dd, train_file, val_file],
             outputs=[status_out, log_out],
         )
-        scan_ckpt_btn.click(lambda: gr.update(choices=list_checkpoints()), outputs=resume_ckpt_dd)
+        scan_ckpt_btn.click(lambda: gr.update(choices=checkpoint_choices()), outputs=resume_ckpt_dd)
         stop_btn.click(do_stop, outputs=status_out)
         refresh_btn.click(do_status, outputs=status_out)
         refresh_btn.click(do_log, outputs=log_out)
