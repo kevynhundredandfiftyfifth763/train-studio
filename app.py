@@ -53,7 +53,7 @@ def do_preview(model, dataset, hf_token, train_file, val_file):
 def do_start(gpus, model, dataset, hf_token, job_name, lora_r, lora_alpha, lora_dropout,
              target_modules, extra_modules, max_seq, lr, epochs, max_steps, batch, grad_accum,
              warmup, wd, scheduler, optim, bf16, fp16, load4bit, save_every, save_limit,
-             train_file, val_file):
+             custom_vram, vram_per_gpu, train_file, val_file):
     cfg = TrainingConfig(
         job_name=job_name or "train_job",
         gpus=[int(g) for g in gpus] if gpus else [0],
@@ -67,6 +67,7 @@ def do_start(gpus, model, dataset, hf_token, job_name, lora_r, lora_alpha, lora_
         bf16=bool(bf16), fp16=bool(fp16), load_in_4bit=bool(load4bit),
         save_every=int(save_every), save_total_limit=int(save_limit),
         output_dir=DEFAULT_OUT,
+        custom_vram=bool(custom_vram), vram_per_gpu=str(vram_per_gpu or ""),
         train_file=train_file, val_file=val_file,
     )
     errs = cfg.validate()
@@ -168,6 +169,10 @@ with gr.Blocks(title="Train Studio") as demo:
             bf16 = gr.Checkbox(value=True, label="BF16 (แนะนำสำหรับ qwen3.5 — GDN layers)")
             fp16 = gr.Checkbox(value=False, label="FP16 (ระวัง NaN บน qwen3.5)")
             load4bit = gr.Checkbox(value=False, label="QLoRA 4-bit (ประหยัด VRAM)")
+        with gr.Row():
+            custom_vram = gr.Checkbox(value=False, label="ปรับ VRAM ต่อ GPU ด้วยมือ (default: 9GiB/GPU)")
+            vram_per_gpu = gr.Textbox(label="VRAM per GPU (GiB, คั่นด้วย , เช่น 9,7,7,7 — GPU0=9, GPU1=7...)",
+                                      value="9,9,9,9", interactive=True)
 
     # ---------------- Train ----------------
     with gr.Tab("🚀 Train"):
@@ -181,7 +186,7 @@ with gr.Blocks(title="Train Studio") as demo:
             inputs=[gpus, model, dataset, hf_token, job_name, lora_r, lora_alpha, lora_dropout,
                     target_modules, extra_modules, max_seq, lr, epochs, max_steps, batch, grad_accum,
                     warmup, wd, scheduler, optim, bf16, fp16, load4bit, save_every, save_limit,
-                    train_file, val_file],
+                    custom_vram, vram_per_gpu, train_file, val_file],
             outputs=[status_out, log_out],
         )
         stop_btn.click(do_stop, outputs=status_out)

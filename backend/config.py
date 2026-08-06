@@ -45,9 +45,29 @@ class TrainingConfig:
     save_total_limit: int = 5
     output_dir: str = "/root/train-studio/outputs"
 
+    # VRAM control (per-GPU max memory, GiB)
+    custom_vram: bool = False
+    vram_per_gpu: str = ""  # e.g. "9,7,7,7" -> GPU0=9GiB, GPU1=7GiB ...
+
     # dataset split
     train_file: str = "train.jsonl"
     val_file: str = "val.jsonl"
+
+    def vram_list(self, n_gpus):
+        """Return list of per-GPU memory in GiB, or None for auto (9GiB each)."""
+        if not self.custom_vram or not self.vram_per_gpu:
+            return None
+        vals = [x.strip() for x in self.vram_per_gpu.split(",") if x.strip()]
+        if not vals:
+            return None
+        try:
+            mems = [float(v) for v in vals]
+        except ValueError:
+            return None
+        if len(mems) < len([g for g in self.gpus]):
+            # pad with last value
+            mems = mems + [mems[-1]] * (len(self.gpus) - len(mems))
+        return mems[:len(self.gpus)]
 
     def target_list(self):
         t = [x.strip() for x in self.target_modules.split(",") if x.strip()]
