@@ -42,6 +42,8 @@ log = logging.getLogger("train")
 
 MODEL = r"{cfg.model}"
 DATA_DIR = r"{cfg.dataset}"
+TRAIN_FILE = "{cfg.train_file}"
+VAL_FILE = "{cfg.val_file}"
 MAX_SEQ = {cfg.max_seq}
 LR = {cfg.lr}
 EPOCHS = {cfg.epochs}
@@ -75,11 +77,21 @@ model = FastLanguageModel.get_peft_model(
 )
 model.print_trainable_parameters()
 
+# dataset อาจเป็นไฟล์เดียว (train.jsonl) → แยก dir + filename
+if os.path.isfile(DATA_DIR):
+    TRAIN_FILE = os.path.basename(DATA_DIR)
+    DATA_DIR = os.path.dirname(DATA_DIR)
+
 # ── Dataset ──
 log.info("Loading dataset...")
-train_raw = load_dataset("json", data_files=os.path.join(DATA_DIR, "{cfg.train_file}"), split="train")
-val_raw = load_dataset("json", data_files=os.path.join(DATA_DIR, "{cfg.val_file}"), split="train")
-log.info(f"Train: {{len(train_raw)}} | Val: {{len(val_raw)}}")
+train_raw = load_dataset("json", data_files=os.path.join(DATA_DIR, TRAIN_FILE), split="train")
+try:
+    val_raw = load_dataset("json", data_files=os.path.join(DATA_DIR, VAL_FILE), split="train")
+    log.info(f"Train: {{len(train_raw)}} | Val: {{len(val_raw)}}")
+except Exception:
+    log.warning(f"Val file '{{VAL_FILE}}' not found — ใช้ train 50 ตัวอย่างแทน (eval ถูกปิดอยู่แล้ว)")
+    val_raw = train_raw.select(range(min(50, len(train_raw))))
+    log.info(f"Train: {{len(train_raw)}} | Val: {{len(val_raw)}} (fallback)")
 
 sft_tok = tokenizer.tokenizer if hasattr(tokenizer, "tokenizer") else tokenizer
 if sft_tok.pad_token is None:
@@ -268,8 +280,11 @@ class TrainerManager:
         if not self.log_path or not os.path.exists(self.log_path):
             return "(no log yet)"
         with open(self.log_path, errors="replace") as f:
-            lines = f.readlines()
-        return "".join(lines[-n:])[-12000:]
+            text = f.read()
+        # normalize line endings — progress bars use \r (no \n)
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
+        lines = text.split("\n")
+        return "\n".join(lines[-n:])[-12000:]
 
     def progress(self):
         """Parse log -> {step, total, loss, lr, epoch, eta}"""

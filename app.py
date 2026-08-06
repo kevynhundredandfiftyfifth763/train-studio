@@ -50,10 +50,17 @@ def state_val(key, default):
 
 
 def auto_job_name(model, dataset):
-    """job name = model basename + dataset basename (sanitized)."""
+    """job name = model basename + dataset basename (sanitized).
+    ถ้า dataset เป็นไฟล์ (train.jsonl) → ใช้ชื่อ folder แทน"""
     import re
     m = (model or "").rstrip("/").split("/")[-1] if model else ""
-    d = (dataset or "").rstrip("/").split("/")[-1] if dataset else ""
+    d = (dataset or "").rstrip("/")
+    base = os.path.basename(d)
+    _exts = (".jsonl", ".json", ".parquet", ".txt", ".csv")
+    if os.path.isfile(d) or (base and os.path.splitext(base)[1] in _exts):
+        d = os.path.basename(os.path.dirname(d))  # ไฟล์ → ใช้ folder
+    else:
+        d = base
     name = f"{m}_{d}".strip("_")
     name = re.sub(r"[^a-zA-Z0-9._-]", "-", name)
     return name or "train_job"
