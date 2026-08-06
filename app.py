@@ -80,13 +80,11 @@ def on_dataset_change(model, dataset):
 def on_job_name_change(job_name):
     UI_STATE["job_name"] = job_name or ""
     save_state()
-    return gr.update()
 
 
 def on_hf_token_change(hf_token):
     UI_STATE["hf_token"] = hf_token or ""
     save_state()
-    return gr.update()
 
 
 def gpu_choices():
@@ -219,6 +217,10 @@ def do_start(gpus, model, dataset, hf_token, job_name, lora_r, lora_alpha, lora_
         resume=bool(resume_ck), resume_ckpt=str(resume_ckpt or ""),
         train_file=train_file, val_file=val_file,
     )
+    # persist UI state (เผื่อ change event ไม่ทัน fire)
+    UI_STATE.update({"model": model or "", "dataset": dataset or "",
+                     "job_name": job_name or "", "hf_token": hf_token or ""})
+    save_state()
     errs = cfg.validate()
     if errs:
         return "\n".join("❌ " + e for e in errs), ""
