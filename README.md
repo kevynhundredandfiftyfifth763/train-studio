@@ -36,7 +36,16 @@ train-studio/
 
 ## 📦 การติดตั้ง
 
-### 1. สร้าง virtualenv + ติดตั้ง dependencies
+### ⚡ One-click install (เร็วสุด)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/nanofatdog/train-studio/master/install.sh | bash
+```
+
+- ติดตั้งที่ `~/train-studio` อัตโนมัติ (ตรวจ Python/GPU/CUDA → เลือก torch ให้เอง)
+- ตัวเลือก: `APP_DIR=/path RUN_AFTER=1 curl -sSL ... | bash` (ติดตั้งที่อื่น + รันเลย)
+
+### หรือ manual
 
 ```bash
 # (เครื่องที่มี GPU / Docker ที่มี nvidia runtime)
