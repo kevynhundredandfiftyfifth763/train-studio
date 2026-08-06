@@ -94,6 +94,58 @@ def on_hf_token_change(hf_token):
     save_state()
 
 
+# ---- Model download (background thread + log) ----
+import threading
+
+DOWNLOAD_STATE = {"running": False, "model": "", "log": ""}
+
+
+def do_download_model(model, hf_token):
+    """กด download model จาก HF → /root/models/<name> (background)."""
+    if DOWNLOAD_STATE.get("running"):
+        return f"⚠️ กำลัง download `{DOWNLOAD_STATE['model']}` อยู่ — รอให้เสร็จก่อน"
+    if not model or os.path.exists(model):
+        return "Model เป็น local path อยู่แล้ว หรือช่องว่าง — ไม่ต้อง download"
+    name = model.rstrip("/").split("/")[-1]
+    log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs", f"download_{model.replace('/', '_')}.log")
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    DOWNLOAD_STATE.update({"running": True, "model": model, "log": log_path})
+    threading.Thread(target=_dl_worker, args=(model, hf_token, log_path), daemon=True).start()
+    return f"⏳ เริ่ม download `{model}` → `/root/models/{name}`\n(กด '🔄 ตรวจสถานะ' เพื่อดูความคืบหน้า — ใหญ่ ~2-18GB ใช้เวลาหลายนาที)"
+
+
+def _dl_worker(model, hf_token, log_path):
+    try:
+        if hf_token:
+            os.environ["HF_TOKEN"] = hf_token
+        from huggingface_hub import snapshot_download
+        target = f"/root/models/{model.rstrip('/').split('/')[-1]}"
+        p = snapshot_download(repo_id=model, local_dir=target)
+        with open(log_path, "w") as f:
+            f.write(f"DONE: {p}")
+    except Exception as e:
+        with open(log_path, "w") as f:
+            f.write(f"ERROR: {e}")
+    finally:
+        DOWNLOAD_STATE["running"] = False
+
+
+def do_dl_status():
+    if not DOWNLOAD_STATE.get("log"):
+        return "*(ยังไม่มีการ download — ใส่ HF repo id แล้วกด ⬇️)*"
+    log_path = DOWNLOAD_STATE["log"]
+    if os.path.exists(log_path):
+        with open(log_path) as f:
+            content = f.read().strip()
+        if content.startswith("DONE"):
+            return f"✅ **Download เสร็จ:** `{content[5:]}`\n\nตอนนี้เลือก path นั้นในช่อง Model ได้เลย (หรือกด 📁 Browse)"
+        if content.startswith("ERROR"):
+            return f"❌ **Download error:** {content[6:]}"
+    if DOWNLOAD_STATE.get("running"):
+        return f"⏳ กำลัง download `{DOWNLOAD_STATE['model']}`... (ไฟล์ใหญ่ ใช้เวลาหลายนาที — กด 🔄 อีกครั้งเพื่อเช็ค)"
+    return f"📁 สถานะ: รอ/เสร็จแล้ว (log: {log_path})"
+
+
 def gpu_choices():
     gpus = get_gpus()
     if not gpus or "error" in gpus[0]:
@@ -338,6 +390,12 @@ with gr.Blocks(title="Train Studio") as demo:
         job_name = gr.Textbox(label="Job name (ชื่อ output folder — อัตโนมัติจาก model+dataset แก้ได้)",
                               value=state_val("job_name", auto_job_name(
                                   state_val("model", DEFAULT_MODEL), state_val("dataset", DEFAULT_DATA))))
+        with gr.Row():
+            dl_model_btn = gr.Button("⬇️ Download Model ไปเครื่อง (จาก HF)", variant="secondary")
+            dl_status_btn = gr.Button("🔄 ตรวจสถานะ download")
+        dl_out = gr.Markdown("*(ยังไม่มีการ download — ใส่ HF repo id ในช่อง Model แล้วกด ⬇️ Download)*")
+        dl_model_btn.click(do_download_model, inputs=[model, hf_token], outputs=dl_out)
+        dl_status_btn.click(do_dl_status, outputs=dl_out)
         preview_btn = gr.Button("👀 Preview Dataset", variant="secondary")
         preview_out = gr.Markdown()
         preview_btn.click(do_preview, inputs=[model, dataset, hf_token, train_file, val_file], outputs=preview_out)
