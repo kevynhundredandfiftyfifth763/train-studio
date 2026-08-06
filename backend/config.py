@@ -49,6 +49,9 @@ class TrainingConfig:
     custom_vram: bool = False
     vram_per_gpu: str = ""  # e.g. "9,7,7,7" -> GPU0=9GiB, GPU1=7GiB ...
 
+    # resume
+    resume: bool = True  # resume from latest checkpoint if exists
+
     # dataset split
     train_file: str = "train.jsonl"
     val_file: str = "val.jsonl"

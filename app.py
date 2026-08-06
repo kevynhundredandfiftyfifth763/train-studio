@@ -92,10 +92,32 @@ def browse_current(path):
     return suggest_path(p)
 
 
+def do_log():
+    log_text = trainer.tail_log(50)
+    if not log_text.strip():
+        return "*(ยังไม่มี log — กด Start Training)*"
+    return "```\n" + log_text.rstrip() + "\n```"
+
+
+def do_gpu_vram():
+    """Live per-GPU VRAM usage."""
+    gpus = get_gpus()
+    lines = ["**GPU VRAM (live):**"]
+    for g in gpus:
+        if "error" in g:
+            continue
+        used = g["memory_used_mb"] / 1024
+        total = g["memory_total_mb"] / 1024
+        pct = g["memory_used_mb"] / g["memory_total_mb"] * 100
+        bar = "█" * int(pct / 10) + "░" * (10 - int(pct / 10))
+        lines.append(f"- GPU {g['index']}: {bar} **{used:.1f} / {total:.1f} GB** ({pct:.0f}%)")
+    return "\n".join(lines)
+
+
 def do_start(gpus, model, dataset, hf_token, job_name, lora_r, lora_alpha, lora_dropout,
              target_modules, extra_modules, max_seq, lr, epochs, max_steps, batch, grad_accum,
              warmup, wd, scheduler, optim, bf16, fp16, load4bit, save_every, save_limit,
-             custom_vram, vram_per_gpu, train_file, val_file):
+             custom_vram, vram_per_gpu, resume_ck, train_file, val_file):
     cfg = TrainingConfig(
         job_name=job_name or "train_job",
         gpus=[int(g) for g in gpus] if gpus else [0],
@@ -110,6 +132,7 @@ def do_start(gpus, model, dataset, hf_token, job_name, lora_r, lora_alpha, lora_
         save_every=int(save_every), save_total_limit=int(save_limit),
         output_dir=DEFAULT_OUT,
         custom_vram=bool(custom_vram), vram_per_gpu=str(vram_per_gpu or ""),
+        resume=bool(resume_ck),
         train_file=train_file, val_file=val_file,
     )
     errs = cfg.validate()
@@ -236,26 +259,30 @@ with gr.Blocks(title="Train Studio") as demo:
 
     # ---------------- Train ----------------
     with gr.Tab("🚀 Train"):
-        start_btn = gr.Button("▶️ Start Training", variant="primary")
-        stop_btn = gr.Button("⏹️ Stop", variant="stop")
+        with gr.Row():
+            resume_ck = gr.Checkbox(value=True, label="↩️ Resume จาก checkpoint ล่าสุด (ถ้ามี)")
+            start_btn = gr.Button("▶️ Start Training", variant="primary")
+            stop_btn = gr.Button("⏹️ Stop", variant="stop")
+            refresh_btn = gr.Button("🔄 Refresh")
+        gpu_vram_out = gr.Markdown("**GPU VRAM (live):** *(กด Refresh หรือรอ auto-update)*")
         status_out = gr.Markdown("**Status:** idle")
-        refresh_btn = gr.Button("🔄 Refresh")
-        log_out = gr.Textbox(label="📜 Training Log", lines=22, max_lines=40)
+        log_out = gr.Markdown("*(log จะแสดงเมื่อกด Refresh หรือ Start — อัปเดตแบบ manual เพื่อไม่ให้เด้งขึ้นบน)*")
         start_btn.click(
             do_start,
             inputs=[gpus, model, dataset, hf_token, job_name, lora_r, lora_alpha, lora_dropout,
                     target_modules, extra_modules, max_seq, lr, epochs, max_steps, batch, grad_accum,
                     warmup, wd, scheduler, optim, bf16, fp16, load4bit, save_every, save_limit,
-                    custom_vram, vram_per_gpu, train_file, val_file],
+                    custom_vram, vram_per_gpu, resume_ck, train_file, val_file],
             outputs=[status_out, log_out],
         )
         stop_btn.click(do_stop, outputs=status_out)
         refresh_btn.click(do_status, outputs=status_out)
         refresh_btn.click(do_log, outputs=log_out)
-        # auto refresh every 5s
+        refresh_btn.click(do_gpu_vram, outputs=gpu_vram_out)
+        # auto refresh status + GPU VRAM ทุก 5s (log แบบ manual — กันเด้ง)
         timer = gr.Timer(5)
         timer.tick(do_status, outputs=status_out)
-        timer.tick(do_log, outputs=log_out)
+        timer.tick(do_gpu_vram, outputs=gpu_vram_out)
 
     # ---------------- Tools ----------------
     with gr.Tab("🛠️ Tools"):
