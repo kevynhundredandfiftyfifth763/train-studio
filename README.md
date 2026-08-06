@@ -16,6 +16,17 @@ Web UI สำหรับฝึก LoRA (SFT) บน GPU ของตัวเ�
 | 🚀 Train | Start / Stop / Resume + status + log auto-refresh (5s) + checkpoint ทุก N steps |
 | 🛠️ Tools | Merge LoRA → Full Model (scale + แก้ config อัตโนมัติ) |
 
+---
+
+## 📸 ตัวอย่างหน้าตาโปรแกรม
+
+<p align="center">
+  <img src="image/image1.png" width="46%" alt="Train Studio — Hardware & Model/Dataset"/>
+  <img src="image/image2.png" width="46%" alt="Train Studio — Training Config & Train"/>
+</p>
+
+---
+
 ## 🧱 โครงสร้าง
 
 ```
@@ -147,3 +158,19 @@ PYTHONPATH=/path/to/llama.cpp/gguf-py python3 /path/to/llama.cpp/convert_hf_to_g
 ## 📄 License
 
 MIT
+
+---
+
+## 💖 สนับสนุนโปรเจกต์
+
+โปรเจกต์นี้ถูกพัฒนาด้วยใจและความทุ่มเทอย่างมาก — ทุกฟีเจอร์ ทุกการแก้บั๊ก ล้วนผ่านการทดลองจริงบน GPU จริง ซ้ำแล้วซ้ำเล่า เพื่อให้ทุกคนได้เทรนโมเดลของตัวเองได้ง่ายที่สุด ไม่ว่าจะเป็นมือใหม่หรือผู้เชี่ยวชาญ
+
+ถ้าคุณรู้สึกว่า **Train Studio** มีประโยชน์ และอยากเป็นส่วนหนึ่งในการพัฒนาโปรเจกต์นี้ให้ดีขึ้นต่อไป คุณสามารถสนับสนุนได้ผ่าน **PromptPay (ไทย)**:
+
+<p align="center">
+  <img src="image/QR.jpg" width="200" alt="PromptPay QR — สนับสนุนโปรเจกต์"/>
+</p>
+
+<p align="center">
+  <em>ทุกการสนับสนุนคือกำลังใจให้พัฒนาต่อไป ขอบคุณจากใจครับ 🙏</em>
+</p>
