@@ -216,5 +216,6 @@ with gr.Blocks(title="Train Studio") as demo:
 
 
 if __name__ == "__main__":
-    demo.queue().launch(server_name="0.0.0.0", server_port=7860, show_error=True,
+    port = int(os.environ.get("GRADIO_SERVER_PORT", "7860"))
+    demo.queue().launch(server_name="0.0.0.0", server_port=port, show_error=True,
                         theme=gr.themes.Soft())
