@@ -245,8 +245,10 @@ def do_stop():
 def do_status():
     p = trainer.progress()
     lines = [f"**Status:** {p.get('status')}"]
-    if "step" in p and "total" in p:
-        lines.append(f"**Step:** {p['step']} / {p['total']}")
+    if "step" in p and "total" in p and p["total"]:
+        pct = p["step"] / p["total"] * 100
+        bar = "█" * int(pct / 5) + "░" * (20 - int(pct / 5))
+        lines.append(f"**Progress:** {bar} {p['step']} / {p['total']} (**{pct:.1f}%**)")
     if "loss" in p:
         lines.append(f"**Loss:** {p['loss']}")
     if "lr" in p:
@@ -255,6 +257,27 @@ def do_status():
         lines.append(f"**Resume:** {p['resume']}")
     if "error" in p:
         lines.append(f"⚠️ **{p['error']}**")
+    return "\n".join(lines)
+
+
+def do_checkpoint_status():
+    """List saved checkpoints with size."""
+    ckpts = list_checkpoints()
+    if not ckpts:
+        return "**Checkpoints:** *(ยังไม่มี — จะ save ทุก N steps หลังเทรนเริ่ม)*"
+    lines = ["**Checkpoints (saved):**"]
+    for c in ckpts[-12:]:
+        job = os.path.basename(os.path.dirname(c))
+        step = os.path.basename(c).split("-")[-1]
+        size = 0
+        for root, _, files in os.walk(c):
+            for f in files:
+                try:
+                    size += os.path.getsize(os.path.join(root, f))
+                except OSError:
+                    pass
+        lines.append(f"- `{job}` → checkpoint-{step} ({size/1e6:.0f} MB)")
+    lines.append(f"\n*รวม {len(ckpts)} checkpoints — ที่ `/root/train-studio/outputs/`*")
     return "\n".join(lines)
 
 
@@ -374,6 +397,7 @@ with gr.Blocks(title="Train Studio") as demo:
                 choices=list_checkpoints(), allow_custom_value=True, scale=4)
             scan_ckpt_btn = gr.Button("🔍 Scan", scale=1)
         gpu_vram_out = gr.Markdown("**GPU VRAM (live):** *(กด Refresh หรือรอ auto-update)*")
+        ckpt_out = gr.Markdown("**Checkpoints:** *(กด Refresh หรือรอ auto-update)*")
         status_out = gr.Markdown("**Status:** idle")
         log_out = gr.Markdown("*(log จะแสดงอัตโนมัติ — อ่านเต็มได้ที่ Full Log ด้านล่าง)*")
         with gr.Accordion("📜 Full Log (อ่าน error เต็ม)", open=False):
@@ -392,11 +416,13 @@ with gr.Blocks(title="Train Studio") as demo:
         refresh_btn.click(do_status, outputs=status_out)
         refresh_btn.click(do_log, outputs=log_out)
         refresh_btn.click(do_gpu_vram, outputs=gpu_vram_out)
+        refresh_btn.click(do_checkpoint_status, outputs=ckpt_out)
         full_log_btn.click(do_full_log, outputs=full_log_out)
-        # auto refresh status + GPU VRAM + log (last 25 lines) ทุก 5s
+        # auto refresh status + GPU VRAM + checkpoints + log (last 25 lines) ทุก 5s
         timer = gr.Timer(5)
         timer.tick(do_status, outputs=status_out)
         timer.tick(do_gpu_vram, outputs=gpu_vram_out)
+        timer.tick(do_checkpoint_status, outputs=ckpt_out)
         timer.tick(do_log, outputs=log_out)
 
     # ---------------- Tools ----------------
