@@ -18,8 +18,8 @@ from backend.merge import MergeManager
 trainer = TrainerManager()
 merger = MergeManager()
 
-DEFAULT_MODEL = "/root/models/Ornith-1.0-9B"
-DEFAULT_DATA = "/root/datasets/ornith_fable"
+DEFAULT_MODEL = "/root/models/"
+DEFAULT_DATA = "/root/datasets/"
 DEFAULT_OUT = "/root/train-studio/outputs"
 
 # ---- UI state persistence (keep user-entered values across tab switches / restarts) ----
