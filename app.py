@@ -198,6 +198,74 @@ def do_preview(model, dataset, hf_token, train_file, val_file):
     return txt
 
 
+def inspect_dataset(dataset, train_file, val_file):
+    """ตรวจสอบ dataset: ไฟล์ที่พบ + format (text/messages) + rows + ตัวอย่าง"""
+    import json as _json
+    lines = []
+    d = dataset or ""
+    if os.path.isfile(d):
+        train_file = os.path.basename(d)
+        d = os.path.dirname(d)
+    if not os.path.isdir(d):
+        return f"⚠️ `{d}` ยังไม่ใช่ local folder — ถ้าเป็น HF repo id ระบบจะโหลดตอนเทรน (กด ⬇️ Download ก่อนก็ได้)"
+    files = sorted(os.listdir(d))
+    lines.append(f"**📁 ไฟล์ใน `{d}`:**")
+    lines.append("  " + (", ".join(files[:15]) if files else "(ว่าง)"))
+    candidates = [f for f in files if f.endswith((".jsonl", ".json", ".parquet"))]
+    if not candidates:
+        lines.append("\n❌ ไม่พบไฟล์ .jsonl/.json/.parquet — ตรวจสอบ dataset")
+        return "\n".join(lines)
+    tf = train_file if train_file in files else (candidates[0] if candidates else None)
+    if not tf:
+        lines.append("\n❌ ไม่พบ train file")
+        return "\n".join(lines)
+    path = os.path.join(d, tf)
+    try:
+        rows = []
+        with open(path) as f:
+            for i, line in enumerate(f):
+                if i >= 3:
+                    break
+                try:
+                    rows.append(_json.loads(line))
+                except Exception:
+                    pass
+        if not rows:
+            lines.append(f"\n❌ อ่าน `{tf}` ไม่ได้ หรือไฟล์ว่าง")
+            return "\n".join(lines)
+        keys = set()
+        for r in rows:
+            keys.update(r.keys())
+        lines.append(f"\n**ไฟล์ train:** `{tf}` — keys: {sorted(keys)}")
+        first = rows[0]
+        if "text" in first:
+            lines.append("✅ format: **text** (ChatML) — ใช้ได้เลย")
+        elif "messages" in first:
+            lines.append("✅ format: **messages** (OpenAI) — ระบบแปลงเป็น ChatML ให้อัตโนมัติ")
+        else:
+            lines.append(f"⚠️ ต้องมี key 'text' หรือ 'messages' — keys ที่เจอ: {sorted(keys)}")
+        try:
+            count = sum(1 for _ in open(path))
+            lines.append(f"**จำนวน rows:** {count:,}")
+        except Exception:
+            pass
+        sample = str(first.get("text") or _json.dumps(first.get("messages", first), ensure_ascii=False))
+        lines.append(f"**ตัวอย่าง row แรก:** {sample[:250]}")
+        # val check
+        vf = val_file if val_file in files else None
+        if vf:
+            try:
+                vcount = sum(1 for _ in open(os.path.join(d, vf)))
+                lines.append(f"**Val file:** `{vf}` ({vcount:,} rows) ✅")
+            except Exception:
+                pass
+        else:
+            lines.append(f"ℹ️ ไม่พบ val file (`{val_file}`) — ระบบจะใช้ train 50 ตัวอย่างแทน (ไม่กระทบ)")
+    except Exception as e:
+        lines.append(f"\n❌ error อ่านไฟล์: {e}")
+    return "\n".join(lines)
+
+
 # ---- Path autocomplete (file browser for local paths) ----
 def suggest_path(prefix):
     """List files/dirs matching a path prefix (shell-like completion)."""
@@ -423,9 +491,13 @@ with gr.Blocks(title="Train Studio") as demo:
         dl_model_btn.click(lambda m, t: do_download("model", m, t), inputs=[model, hf_token], outputs=dl_out)
         dl_dataset_btn.click(lambda d, t: do_download("dataset", d, t), inputs=[dataset, hf_token], outputs=dl_out)
         dl_status_btn.click(do_dl_status, outputs=[dl_out, model, dataset])
-        preview_btn = gr.Button("👀 Preview Dataset", variant="secondary")
+        with gr.Row():
+            inspect_btn = gr.Button("🔍 ตรวจสอบ Dataset (format/rows)", variant="secondary")
+            preview_btn = gr.Button("👀 Preview Dataset", variant="secondary")
         preview_out = gr.Markdown()
+        inspect_out = gr.Markdown("*(กด 🔍 ตรวจสอบ Dataset — จะบอก format, rows, ตัวอย่าง และผ่าน/ไม่ผ่าน)*")
         preview_btn.click(do_preview, inputs=[model, dataset, hf_token, train_file, val_file], outputs=preview_out)
+        inspect_btn.click(inspect_dataset, inputs=[dataset, train_file, val_file], outputs=inspect_out)
 
         # ---- path autocomplete (file browser) events ----
         model.input(suggest_path, inputs=model, outputs=model_dd)
