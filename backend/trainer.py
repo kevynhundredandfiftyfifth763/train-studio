@@ -82,6 +82,26 @@ if os.path.isfile(DATA_DIR):
     TRAIN_FILE = os.path.basename(DATA_DIR)
     DATA_DIR = os.path.dirname(DATA_DIR)
 
+def resolve_file(d, name, prefixes):
+    """หาไฟล์อัตโนมัติ: ใช้ชื่อที่ให้ก่อน; ถ้าไม่มี → หาไฟล์ที่ขึ้นต้น train/val (jsonl/parquet)"""
+    if name and os.path.exists(os.path.join(d, name)):
+        return name
+    exts = (".jsonl", ".parquet", ".json")
+    try:
+        entries = sorted(os.listdir(d))
+    except OSError:
+        return name
+    for f in entries:
+        if any(f.startswith(p) for p in prefixes) and f.endswith(exts):
+            return f
+    for f in entries:
+        if f.endswith(exts):
+            return f
+    return name
+
+TRAIN_FILE = resolve_file(DATA_DIR, TRAIN_FILE, ("train",))
+VAL_FILE = resolve_file(DATA_DIR, VAL_FILE, ("val", "validation", "test"))
+
 def load_split(path):
     if str(path).endswith(".parquet"):
         return load_dataset("parquet", data_files=path, split="train")
