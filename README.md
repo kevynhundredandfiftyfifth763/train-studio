@@ -68,6 +68,34 @@ python3 -m venv venv
 ./venv/bin/pip install -r requirements.txt
 ```
 
+### 🐳 Docker (แนะนำ)
+
+ใช้ base image ที่มี CUDA + cuDNN พร้อม (รองรับ CUDA 13.x):
+
+```dockerfile
+FROM nvidia/cuda:13.1.2-cudnn-devel-ubuntu24.04
+
+# ติดตั้ง prerequisites + Train Studio
+RUN apt-get update && apt-get install -y python3 python3-pip python3-venv git curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -sSL https://raw.githubusercontent.com/nanofatdog/train-studio/master/install.sh | bash
+
+WORKDIR /root/train-studio
+EXPOSE 7860
+CMD ["./venv/bin/python", "app.py"]
+```
+
+```bash
+docker build -t train-studio .
+docker run --gpus all -p 7860:7860 \
+  -v /root/models:/root/models \
+  -v /root/datasets:/root/datasets \
+  -v /root/train-studio/outputs:/root/train-studio/outputs \
+  train-studio
+```
+
+> mount โฟลเดอร์ `models/` `datasets/` `outputs/` เพื่อเก็บข้อมูลระหว่าง container restarts
+
 ### 2. ติดตั้ง training stack (ถ้ายังไม่มี)
 
 ```bash
@@ -158,6 +186,24 @@ PYTHONPATH=/path/to/llama.cpp/gguf-py python3 /path/to/llama.cpp/convert_hf_to_g
 ## 📄 License
 
 MIT
+
+---
+
+## 🙏 Acknowledgements
+
+โปรเจกต์นี้พัฒนาต่อยอดจากโอเพนซอร์สชั้นเยี่ยมเหล่านี้:
+
+- [**Unsloth**](https://github.com/unslothai/unsloth) — โหลดโมเดล + LoRA training ที่รวดเร็ว
+- [**HuggingFace Transformers**](https://github.com/huggingface/transformers) — โมเดล/tokenizer/processor
+- [**PEFT**](https://github.com/huggingface/peft) — LoRA adapter framework
+- [**HF Trainer**](https://huggingface.co/docs/transformers/training) — training loop ที่เชื่อถือได้
+- [**HuggingFace Datasets**](https://github.com/huggingface/datasets) — data loading (jsonl/parquet)
+- [**Gradio**](https://github.com/gradio-app/gradio) — Web UI framework
+- [**bitsandbytes**](https://github.com/bitsandbytes-foundation/bitsandbytes) — 8-bit optimizer
+- [**llama.cpp**](https://github.com/ggml-org/llama.cpp) — GGUF conversion & inference
+- [**PyTorch**](https://pytorch.org) — deep learning framework
+
+ขอบคุณทุกโปรเจกต์ที่ทำให้ Train Studio เป็นไปได้ 🙏
 
 ---
 
