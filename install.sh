@@ -143,13 +143,21 @@ info "Installing unsloth (training backend)..."
 ./venv/bin/pip install unsloth >/dev/null 2>&1 || warn "unsloth install failed — เทรนต้องใช้ unsloth (ดู README)"
 
 # ---------- 8. Verify ----------
+info "ตรวจสอบการติดตั้ง..."
 ./venv/bin/python -c "import gradio, torch, transformers; print('gradio', gradio.__version__, '| torch', torch.__version__, '| transformers', transformers.__version__)" \
-  || { err "import verify failed"; exit 1; }
+  || { err "import verify failed — ติดตั้งไม่ครบ ลองรัน install ใหม่อีกครั้ง"; exit 1; }
+./venv/bin/python -c "import unsloth; print('unsloth', unsloth.__version__)" \
+  || warn "unsloth ยังไม่ครบ — เทรนต้องใช้ unsloth (pip install unsloth)"
 
-info "✅ Install complete!"
+info "✅ Install complete! ติดตั้งครบทุกอย่างแล้ว"
 echo
-info "Run:  $APP_DIR/venv/bin/python $APP_DIR/app.py"
-info "Open: http://localhost:7860"
+info "▶️  รันด้วย:  cd $APP_DIR && ./venv/bin/python app.py"
+info "🌐  เปิด:     http://localhost:7860"
+echo
+info "⚠️  หมายเหตุ:"
+info "   - ต้องรอให้เห็น '✅ Install complete!' ก่อน (torch ใหญ่ ~2.5GB ใช้เวลา 10-15 นาที)"
+info "   - ห้ามใช้ PYTHON=... env — venv มีทุกอย่างครบแล้ว (trainer ใช้ venv python เอง)"
+info "   - เปลี่ยน port: GRADIO_SERVER_PORT=8000 ./venv/bin/python app.py"
 echo
 
 if [ "$RUN_AFTER" = "1" ]; then
