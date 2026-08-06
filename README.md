@@ -1,5 +1,15 @@
 # 🚀 Train Studio — SFT LoRA Web UI
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white"/>
+  <img src="https://img.shields.io/badge/License-MIT-blue"/>
+  <img src="https://img.shields.io/badge/UI-Gradio-orange"/>
+  <img src="https://img.shields.io/badge/LoRA-SFT-green"/>
+  <img src="https://img.shields.io/badge/HuggingFace-Transformers-yellow"/>
+  <img src="https://img.shields.io/badge/GPU-Training-red"/>
+  <img src="https://img.shields.io/badge/GGUF-llama.cpp-blueviolet"/>
+</p>
+
 Web UI สำหรับฝึก LoRA (SFT) บน GPU ของตัวเอง — เลือก GPU / โมเดล / dataset / ปรับ config ได้อิสระผ่าน browser คล้าย unsloth.ai
 
 อิงจาก workflow ที่พิสูจน์แล้ว: **Unsloth BF16 + HF Trainer + checkpoint/resume** (ใช้เทรน Ornith-1.0-9B และ Agents-A1-4B สำเร็จ)
