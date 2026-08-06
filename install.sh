@@ -58,11 +58,15 @@ info "Free disk : ${FREE_GB:-?} GB (torch+model ต้องการ ~20GB)"
 if [ -d "$APP_DIR/.git" ]; then
   info "Updating existing install..."
   git -C "$APP_DIR" pull --ff-only 2>/dev/null || warn "git pull failed — continue with existing files"
+elif [ -f "$APP_DIR/app.py" ]; then
+  info "Existing install found (no .git) — reusing files in $APP_DIR"
+  warn "เพื่ออัปเดตโค้ด: cd $APP_DIR && git init && git remote add origin $REPO_URL && git fetch && git checkout -f origin/master"
 else
   if ! command -v git >/dev/null 2>&1; then
     err "git not found — install git first"
     exit 1
   fi
+  mkdir -p "$APP_DIR"
   info "Cloning repo..."
   git clone --depth 1 "$REPO_URL" "$APP_DIR" || { err "clone failed"; exit 1; }
 fi
