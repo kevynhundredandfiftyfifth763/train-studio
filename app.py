@@ -393,7 +393,7 @@ with gr.Blocks(title="Train Studio") as demo:
             refresh_btn = gr.Button("🔄 Refresh")
         with gr.Row():
             resume_ckpt_dd = gr.Dropdown(
-                label="เลือก checkpoint เฉพาะ (ไม่เลือก = resume ล่าสุดอัตโนมัติ)",
+                label="เลือก checkpoint ที่จะ resume (ว่าง = เริ่มใหม่ ไม่ resume)",
                 choices=list_checkpoints(), allow_custom_value=True, scale=4)
             scan_ckpt_btn = gr.Button("🔍 Scan", scale=1)
         gpu_vram_out = gr.Markdown("**GPU VRAM (live):** *(กด Refresh หรือรอ auto-update)*")

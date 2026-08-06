@@ -200,21 +200,11 @@ class SaveCB(TrainerCallback):
 trainer.add_callback(SaveCB(SAVE_EVERY, OUT))
 
 resume_ckpt = None
-if {str(cfg.resume)}:
-    if "{cfg.resume_ckpt}":
-        resume_ckpt = r"{cfg.resume_ckpt}"
-        log.info(f"Resuming from selected checkpoint: {{resume_ckpt}}")
-    elif os.path.exists(OUT):
-        ckpts = sorted(glob.glob(os.path.join(OUT, "checkpoint-*")), key=lambda x: int(x.split("-")[-1]))
-        if ckpts:
-            resume_ckpt = ckpts[-1]
-            log.info(f"Resuming from latest checkpoint: {{resume_ckpt}}")
-        else:
-            log.info("No checkpoint found — starting fresh")
-    else:
-        log.info("No output dir yet — starting fresh")
+if {str(cfg.resume)} and "{cfg.resume_ckpt}":
+    resume_ckpt = r"{cfg.resume_ckpt}"
+    log.info(f"Resuming from selected checkpoint: {{resume_ckpt}}")
 else:
-    log.info("Resume disabled (config) — starting fresh")
+    log.info("Resume disabled (no checkpoint selected) — starting fresh")
 
 log.info("=" * 50)
 log.info(f"Target: {{EPOCHS}} epochs (~{{max_steps}} steps)")
