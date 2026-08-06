@@ -601,16 +601,37 @@ with gr.Blocks(title="Train Studio") as demo:
     # ---------------- Tools ----------------
     with gr.Tab("🛠️ Tools"):
         gr.Markdown("### 🔧 Merge LoRA → Full Model (BF16, scale + config fix)")
-        merge_base = gr.Textbox(label="Base model path", value=DEFAULT_MODEL)
-        merge_adapter = gr.Textbox(label="LoRA adapter path", value=os.path.join(DEFAULT_OUT, "train_job/final"))
+        with gr.Row():
+            merge_base = gr.Textbox(label="Base model path (พิมพ์ path แล้วเลือกอัตโนมัติ)", value=DEFAULT_MODEL, scale=4)
+            merge_base_browse = gr.Button("📁 Browse", scale=1)
+        merge_base_dd = gr.Dropdown(label="เลือก path — folder ลงท้าย /", choices=[], visible=False, interactive=True)
+        with gr.Row():
+            merge_adapter = gr.Textbox(label="LoRA adapter path (โฟลเดอร์ที่มี adapter_model.safetensors)",
+                                       value=os.path.join(DEFAULT_OUT, "train_job/final"), scale=4)
+            merge_adapter_browse = gr.Button("📁 Browse", scale=1)
+        merge_adapter_dd = gr.Dropdown(label="เลือก path — folder ลงท้าย /", choices=[], visible=False, interactive=True)
         merge_scale = gr.Slider(0.1, 1.0, value=0.3, step=0.05, label="Merge scale")
-        merge_out_dir = gr.Textbox(label="Output dir", value=os.path.join(DEFAULT_OUT, "merged"))
+        with gr.Row():
+            merge_out_dir = gr.Textbox(label="Output dir (ที่เก็บ merged model)", value=os.path.join(DEFAULT_OUT, "merged"), scale=4)
+            merge_out_browse = gr.Button("📁 Browse", scale=1)
+        merge_out_dd = gr.Dropdown(label="เลือก path — folder ลงท้าย /", choices=[], visible=False, interactive=True)
         merge_gpus = gr.CheckboxGroup(label="GPU สำหรับ merge", choices=gpu_choices(), value=gpu_choices())
         merge_btn = gr.Button("🔧 Start Merge", variant="primary")
         merge_status = gr.Markdown("**Status:** idle")
         merge_log = gr.Textbox(label="📜 Merge Log", lines=15)
         merge_btn.click(do_merge, inputs=[merge_base, merge_adapter, merge_scale, merge_out_dir, merge_gpus],
                         outputs=[merge_status, merge_log])
+
+        # ---- path autocomplete events (merge fields) ----
+        merge_base.input(suggest_path, inputs=merge_base, outputs=merge_base_dd)
+        merge_base_dd.select(on_path_pick, inputs=merge_base_dd, outputs=[merge_base, merge_base_dd])
+        merge_base_browse.click(browse_current, inputs=merge_base, outputs=merge_base_dd)
+        merge_adapter.input(suggest_path, inputs=merge_adapter, outputs=merge_adapter_dd)
+        merge_adapter_dd.select(on_path_pick, inputs=merge_adapter_dd, outputs=[merge_adapter, merge_adapter_dd])
+        merge_adapter_browse.click(browse_current, inputs=merge_adapter, outputs=merge_adapter_dd)
+        merge_out_dir.input(suggest_path, inputs=merge_out_dir, outputs=merge_out_dd)
+        merge_out_dd.select(on_path_pick, inputs=merge_out_dd, outputs=[merge_out_dir, merge_out_dd])
+        merge_out_browse.click(browse_current, inputs=merge_out_dir, outputs=merge_out_dd)
         gr.Markdown("### 📄 GGUF Convert (รันเองใน terminal)")
         gr.Markdown(
             "```bash\n"
