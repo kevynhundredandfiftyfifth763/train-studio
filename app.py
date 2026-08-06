@@ -50,6 +50,48 @@ def do_preview(model, dataset, hf_token, train_file, val_file):
     return txt
 
 
+# ---- Path autocomplete (file browser for local paths) ----
+def suggest_path(prefix):
+    """List files/dirs matching a path prefix (shell-like completion)."""
+    if not prefix or not prefix.startswith("/"):
+        return gr.update(visible=False, choices=[])
+    if prefix.endswith("/"):
+        base = prefix
+    else:
+        base = os.path.dirname(prefix) + "/"
+        if base == "//":
+            base = "/"
+    try:
+        entries = sorted(os.listdir(base))
+    except Exception:
+        return gr.update(visible=False, choices=[])
+    choices = []
+    for e in entries:
+        if e.startswith("."):
+            continue
+        full = os.path.join(base, e)
+        choices.append(full + "/" if os.path.isdir(full) else full)
+    choices = [c for c in choices if c.startswith(prefix)]
+    return gr.update(visible=bool(choices), choices=choices[:60])
+
+
+def on_path_pick(choice):
+    """When user picks a suggestion: folder -> continue browsing, file -> done."""
+    if not choice:
+        return gr.update(), gr.update(visible=False)
+    if choice.endswith("/"):
+        return choice, suggest_path(choice)
+    return choice, gr.update(visible=False)
+
+
+def browse_current(path):
+    """Browse button: show contents of current path (or /root)."""
+    p = path or "/root"
+    if not p.endswith("/"):
+        p = p + "/"
+    return suggest_path(p)
+
+
 def do_start(gpus, model, dataset, hf_token, job_name, lora_r, lora_alpha, lora_dropout,
              target_modules, extra_modules, max_seq, lr, epochs, max_steps, batch, grad_accum,
              warmup, wd, scheduler, optim, bf16, fp16, load4bit, save_every, save_limit,
@@ -132,13 +174,31 @@ with gr.Blocks(title="Train Studio") as demo:
     # ---------------- Model & Dataset ----------------
     with gr.Tab("📦 Model & Dataset"):
         hf_token = gr.Textbox(label="🤗 HF Token (optional — สำหรับ gated model/dataset)", type="password")
-        model = gr.Textbox(label="Model (HF repo id หรือ local path)", value=DEFAULT_MODEL)
-        dataset = gr.Textbox(label="Dataset (HF repo id หรือ local dir ที่มี train.jsonl/val.jsonl)", value=DEFAULT_DATA)
+        with gr.Row():
+            model = gr.Textbox(label="Model (HF repo id หรือ local path — พิมพ์ path แล้วเลือกอัตโนมัติ)",
+                               value=DEFAULT_MODEL, scale=4)
+            model_browse = gr.Button("📁 Browse", scale=1)
+        model_dd = gr.Dropdown(label="เลือก path (พิมพ์ต่อเพื่อค้นหา — folder ลงท้าย /)", choices=[],
+                               visible=False, interactive=True)
+        with gr.Row():
+            dataset = gr.Textbox(label="Dataset (HF repo id หรือ local dir ที่มี train.jsonl/val.jsonl)",
+                                 value=DEFAULT_DATA, scale=4)
+            dataset_browse = gr.Button("📁 Browse", scale=1)
+        dataset_dd = gr.Dropdown(label="เลือก path (พิมพ์ต่อเพื่อค้นหา — folder ลงท้าย /)", choices=[],
+                                 visible=False, interactive=True)
         train_file = gr.Textbox(label="Train file name", value="train.jsonl")
         val_file = gr.Textbox(label="Val file name", value="val.jsonl")
         preview_btn = gr.Button("👀 Preview Dataset", variant="secondary")
         preview_out = gr.Markdown()
         preview_btn.click(do_preview, inputs=[model, dataset, hf_token, train_file, val_file], outputs=preview_out)
+
+        # ---- path autocomplete (file browser) events ----
+        model.input(suggest_path, inputs=model, outputs=model_dd)
+        model_dd.select(on_path_pick, inputs=model_dd, outputs=[model, model_dd])
+        model_browse.click(browse_current, inputs=model, outputs=model_dd)
+        dataset.input(suggest_path, inputs=dataset, outputs=dataset_dd)
+        dataset_dd.select(on_path_pick, inputs=dataset_dd, outputs=[dataset, dataset_dd])
+        dataset_browse.click(browse_current, inputs=dataset, outputs=dataset_dd)
 
     # ---------------- Training Config ----------------
     with gr.Tab("⚙️ Training Config"):
