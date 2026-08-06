@@ -114,10 +114,19 @@ def do_gpu_vram():
     return "\n".join(lines)
 
 
+def list_checkpoints():
+    """Scan output dir for checkpoints: outputs/*/checkpoint-* (sorted by job, then step)."""
+    import glob
+    pat = os.path.join(DEFAULT_OUT, "*", "checkpoint-*")
+    ckpts = sorted(glob.glob(pat), key=lambda p: (os.path.basename(os.path.dirname(p)),
+                                                  int(os.path.basename(p).split("-")[-1])))
+    return ckpts
+
+
 def do_start(gpus, model, dataset, hf_token, job_name, lora_r, lora_alpha, lora_dropout,
              target_modules, extra_modules, max_seq, lr, epochs, max_steps, batch, grad_accum,
              warmup, wd, scheduler, optim, bf16, fp16, load4bit, save_every, save_limit,
-             custom_vram, vram_per_gpu, resume_ck, train_file, val_file):
+             custom_vram, vram_per_gpu, resume_ck, resume_ckpt, train_file, val_file):
     cfg = TrainingConfig(
         job_name=job_name or "train_job",
         gpus=[int(g) for g in gpus] if gpus else [0],
@@ -132,7 +141,7 @@ def do_start(gpus, model, dataset, hf_token, job_name, lora_r, lora_alpha, lora_
         save_every=int(save_every), save_total_limit=int(save_limit),
         output_dir=DEFAULT_OUT,
         custom_vram=bool(custom_vram), vram_per_gpu=str(vram_per_gpu or ""),
-        resume=bool(resume_ck),
+        resume=bool(resume_ck), resume_ckpt=str(resume_ckpt or ""),
         train_file=train_file, val_file=val_file,
     )
     errs = cfg.validate()
@@ -264,6 +273,11 @@ with gr.Blocks(title="Train Studio") as demo:
             start_btn = gr.Button("▶️ Start Training", variant="primary")
             stop_btn = gr.Button("⏹️ Stop", variant="stop")
             refresh_btn = gr.Button("🔄 Refresh")
+        with gr.Row():
+            resume_ckpt_dd = gr.Dropdown(
+                label="เลือก checkpoint เฉพาะ (ไม่เลือก = resume ล่าสุดอัตโนมัติ)",
+                choices=list_checkpoints(), allow_custom_value=True, scale=4)
+            scan_ckpt_btn = gr.Button("🔍 Scan", scale=1)
         gpu_vram_out = gr.Markdown("**GPU VRAM (live):** *(กด Refresh หรือรอ auto-update)*")
         status_out = gr.Markdown("**Status:** idle")
         log_out = gr.Markdown("*(log จะแสดงเมื่อกด Refresh หรือ Start — อัปเดตแบบ manual เพื่อไม่ให้เด้งขึ้นบน)*")
@@ -272,9 +286,10 @@ with gr.Blocks(title="Train Studio") as demo:
             inputs=[gpus, model, dataset, hf_token, job_name, lora_r, lora_alpha, lora_dropout,
                     target_modules, extra_modules, max_seq, lr, epochs, max_steps, batch, grad_accum,
                     warmup, wd, scheduler, optim, bf16, fp16, load4bit, save_every, save_limit,
-                    custom_vram, vram_per_gpu, resume_ck, train_file, val_file],
+                    custom_vram, vram_per_gpu, resume_ck, resume_ckpt_dd, train_file, val_file],
             outputs=[status_out, log_out],
         )
+        scan_ckpt_btn.click(lambda: gr.update(choices=list_checkpoints()), outputs=resume_ckpt_dd)
         stop_btn.click(do_stop, outputs=status_out)
         refresh_btn.click(do_status, outputs=status_out)
         refresh_btn.click(do_log, outputs=log_out)

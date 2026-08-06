@@ -51,6 +51,7 @@ class TrainingConfig:
 
     # resume
     resume: bool = True  # resume from latest checkpoint if exists
+    resume_ckpt: str = ""  # specific checkpoint path ("" = auto latest)
 
     # dataset split
     train_file: str = "train.jsonl"
