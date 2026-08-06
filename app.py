@@ -22,6 +22,72 @@ DEFAULT_MODEL = "/root/models/Ornith-1.0-9B"
 DEFAULT_DATA = "/root/datasets/ornith_fable"
 DEFAULT_OUT = "/root/train-studio/outputs"
 
+# ---- UI state persistence (keep user-entered values across tab switches / restarts) ----
+UI_STATE = {}
+STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_state.json")
+
+
+def load_state():
+    global UI_STATE
+    try:
+        with open(STATE_FILE) as f:
+            UI_STATE = json.load(f)
+    except Exception:
+        UI_STATE = {}
+    return UI_STATE
+
+
+def save_state():
+    try:
+        with open(STATE_FILE, "w") as f:
+            json.dump(UI_STATE, f, indent=2)
+    except Exception:
+        pass
+
+
+def state_val(key, default):
+    return UI_STATE.get(key, default)
+
+
+def auto_job_name(model, dataset):
+    """job name = model basename + dataset basename (sanitized)."""
+    import re
+    m = (model or "").rstrip("/").split("/")[-1] if model else ""
+    d = (dataset or "").rstrip("/").split("/")[-1] if dataset else ""
+    name = f"{m}_{d}".strip("_")
+    name = re.sub(r"[^a-zA-Z0-9._-]", "-", name)
+    return name or "train_job"
+
+
+def on_model_change(model, dataset):
+    """Persist model + auto job name."""
+    UI_STATE["model"] = model or ""
+    if dataset:
+        UI_STATE["job_name"] = auto_job_name(model, dataset)
+    save_state()
+    return UI_STATE.get("job_name", "train_job")
+
+
+def on_dataset_change(model, dataset):
+    """Persist dataset + auto job name."""
+    UI_STATE["dataset"] = dataset or ""
+    if model:
+        UI_STATE["job_name"] = auto_job_name(model, dataset)
+    save_state()
+    return UI_STATE.get("job_name", "train_job")
+
+
+def on_job_name_change(job_name):
+    UI_STATE["job_name"] = job_name or ""
+    save_state()
+    return gr.update()
+
+
+def on_hf_token_change(hf_token):
+    UI_STATE["hf_token"] = hf_token or ""
+    save_state()
+    return gr.update()
+
 
 def gpu_choices():
     gpus = get_gpus()
@@ -201,6 +267,8 @@ def do_merge_log():
     return merger.tail_log(60)
 
 
+load_state()  # โหลดค่าที่ user เคยบันทึกไว้ (model/dataset/job_name/hf_token)
+
 with gr.Blocks(title="Train Studio") as demo:
     gr.Markdown("# 🚀 Train Studio — SFT LoRA Web UI")
     gr.Markdown("เทรน LoRA ผ่านเว็บ — เลือก GPU/โมเดล/dataset/ปรับ config ได้อิสระ (อิง proven workflow: Unsloth BF16 + HF Trainer)")
@@ -214,21 +282,24 @@ with gr.Blocks(title="Train Studio") as demo:
 
     # ---------------- Model & Dataset ----------------
     with gr.Tab("📦 Model & Dataset"):
-        hf_token = gr.Textbox(label="🤗 HF Token (optional — สำหรับ gated model/dataset)", type="password")
+        hf_token = gr.Textbox(label="🤗 HF Token (optional — สำหรับ gated model/dataset)",
+                              type="password", value=state_val("hf_token", ""))
         with gr.Row():
             model = gr.Textbox(label="Model (HF repo id หรือ local path — พิมพ์ path แล้วเลือกอัตโนมัติ)",
-                               value=DEFAULT_MODEL, scale=4)
+                               value=state_val("model", DEFAULT_MODEL), scale=4)
             model_browse = gr.Button("📁 Browse", scale=1)
         model_dd = gr.Dropdown(label="เลือก path (พิมพ์ต่อเพื่อค้นหา — folder ลงท้าย /)", choices=[],
                                visible=False, interactive=True)
         with gr.Row():
             dataset = gr.Textbox(label="Dataset (HF repo id หรือ local dir ที่มี train.jsonl/val.jsonl)",
-                                 value=DEFAULT_DATA, scale=4)
+                                 value=state_val("dataset", DEFAULT_DATA), scale=4)
             dataset_browse = gr.Button("📁 Browse", scale=1)
         dataset_dd = gr.Dropdown(label="เลือก path (พิมพ์ต่อเพื่อค้นหา — folder ลงท้าย /)", choices=[],
                                  visible=False, interactive=True)
         train_file = gr.Textbox(label="Train file name", value="train.jsonl")
         val_file = gr.Textbox(label="Val file name", value="val.jsonl")
+        job_name = gr.Textbox(label="Job name (ชื่อ output folder — อัตโนมัติจาก model+dataset แก้ได้)",
+                              value=state_val("job_name", "train_job"))
         preview_btn = gr.Button("👀 Preview Dataset", variant="secondary")
         preview_out = gr.Markdown()
         preview_btn.click(do_preview, inputs=[model, dataset, hf_token, train_file, val_file], outputs=preview_out)
@@ -241,10 +312,15 @@ with gr.Blocks(title="Train Studio") as demo:
         dataset_dd.select(on_path_pick, inputs=dataset_dd, outputs=[dataset, dataset_dd])
         dataset_browse.click(browse_current, inputs=dataset, outputs=dataset_dd)
 
+        # ---- persistence + auto job name events ----
+        model.change(on_model_change, inputs=[model, dataset], outputs=job_name)
+        dataset.change(on_dataset_change, inputs=[model, dataset], outputs=job_name)
+        job_name.change(on_job_name_change, inputs=job_name)
+        hf_token.change(on_hf_token_change, inputs=hf_token)
+
     # ---------------- Training Config ----------------
     with gr.Tab("⚙️ Training Config"):
         gpus = gr.CheckboxGroup(label="🎮 เลือก GPU", choices=gpu_choices(), value=gpu_choices())
-        job_name = gr.Textbox(label="Job name (ชื่อ output folder)", value="train_job")
         with gr.Row():
             lora_r = gr.Slider(1, 256, value=64, step=1, label="LoRA r")
             lora_alpha = gr.Slider(1, 512, value=128, step=1, label="LoRA alpha")
