@@ -106,8 +106,19 @@ def tokenize_all(data, name="train"):
     n = len(data)
     log.info(f"  Tokenizing {{name}} ({{n}} samples)...")
     for i, row in enumerate(data):
-        text = row["text"]
-        if not text: continue
+        # support text (ChatML string) หรือ messages (OpenAI list) format
+        text = row.get("text") or row.get("content") or ""
+        if not text:
+            msgs = row.get("messages")
+            if msgs:
+                try:
+                    text = sft_tok.apply_chat_template(msgs, tokenize=False)
+                except Exception:
+                    continue
+            else:
+                continue
+        if not text:
+            continue
         enc = sft_tok(text, truncation=True, max_length=MAX_SEQ, return_tensors="pt")
         ids = enc["input_ids"][0].to(dtype=torch.long)
         mask = enc["attention_mask"][0]
