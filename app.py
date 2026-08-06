@@ -460,6 +460,12 @@ def do_merge_log():
     return merger.tail_log(60)
 
 
+def do_merge_status():
+    if merger.running:
+        return "🔄 **กำลัง merge...** (กด Refresh เพื่อดู log)"
+    return "**Status:** idle"
+
+
 load_state()  # โหลดค่าที่ user เคยบันทึกไว้ (model/dataset/job_name/hf_token)
 
 with gr.Blocks(title="Train Studio") as demo:
@@ -616,11 +622,15 @@ with gr.Blocks(title="Train Studio") as demo:
             merge_out_browse = gr.Button("📁 Browse", scale=1)
         merge_out_dd = gr.Dropdown(label="เลือก path — folder ลงท้าย /", choices=[], visible=False, interactive=True)
         merge_gpus = gr.CheckboxGroup(label="GPU สำหรับ merge", choices=gpu_choices(), value=gpu_choices())
-        merge_btn = gr.Button("🔧 Start Merge", variant="primary")
+        with gr.Row():
+            merge_btn = gr.Button("🔧 Start Merge", variant="primary")
+            merge_refresh_btn = gr.Button("🔄 Refresh Merge Log")
         merge_status = gr.Markdown("**Status:** idle")
         merge_log = gr.Textbox(label="📜 Merge Log", lines=15)
         merge_btn.click(do_merge, inputs=[merge_base, merge_adapter, merge_scale, merge_out_dir, merge_gpus],
                         outputs=[merge_status, merge_log])
+        merge_refresh_btn.click(do_merge_log, outputs=merge_log)
+        merge_refresh_btn.click(do_merge_status, outputs=merge_status)
 
         # ---- path autocomplete events (merge fields) ----
         merge_base.input(suggest_path, inputs=merge_base, outputs=merge_base_dd)

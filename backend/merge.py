@@ -119,4 +119,7 @@ class MergeManager:
         if not self.log_path or not os.path.exists(self.log_path):
             return "(no log yet)"
         with open(self.log_path, errors="replace") as f:
-            return "".join(f.readlines()[-n:])[-10000:]
+            text = f.read()
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
+        lines = text.split("\n")
+        return "\n".join(lines[-n:])[-10000:]
