@@ -77,16 +77,21 @@ model = FastLanguageModel.get_peft_model(
 )
 model.print_trainable_parameters()
 
-# dataset อาจเป็นไฟล์เดียว (train.jsonl) → แยก dir + filename
+# dataset อาจเป็นไฟล์เดียว (train.jsonl/.parquet) → แยก dir + filename
 if os.path.isfile(DATA_DIR):
     TRAIN_FILE = os.path.basename(DATA_DIR)
     DATA_DIR = os.path.dirname(DATA_DIR)
 
+def load_split(path):
+    if str(path).endswith(".parquet"):
+        return load_dataset("parquet", data_files=path, split="train")
+    return load_dataset("json", data_files=path, split="train")
+
 # ── Dataset ──
 log.info("Loading dataset...")
-train_raw = load_dataset("json", data_files=os.path.join(DATA_DIR, TRAIN_FILE), split="train")
+train_raw = load_split(os.path.join(DATA_DIR, TRAIN_FILE))
 try:
-    val_raw = load_dataset("json", data_files=os.path.join(DATA_DIR, VAL_FILE), split="train")
+    val_raw = load_split(os.path.join(DATA_DIR, VAL_FILE))
     log.info(f"Train: {{len(train_raw)}} | Val: {{len(val_raw)}}")
 except Exception:
     log.warning(f"Val file '{{VAL_FILE}}' not found — ใช้ train 50 ตัวอย่างแทน (eval ถูกปิดอยู่แล้ว)")

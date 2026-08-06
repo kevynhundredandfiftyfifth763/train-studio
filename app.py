@@ -222,21 +222,32 @@ def inspect_dataset(dataset, train_file, val_file):
     path = os.path.join(d, tf)
     try:
         rows = []
-        with open(path) as f:
-            for i, line in enumerate(f):
-                if i >= 3:
-                    break
-                try:
-                    rows.append(_json.loads(line))
-                except Exception:
-                    pass
+        count = 0
+        if tf.endswith(".parquet"):
+            import pandas as pd
+            df = pd.read_parquet(path)
+            count = len(df)
+            rows = df.head(3).to_dict("records")
+        else:
+            with open(path) as f:
+                for i, line in enumerate(f):
+                    if i >= 3:
+                        break
+                    try:
+                        rows.append(_json.loads(line))
+                    except Exception:
+                        pass
+            try:
+                count = sum(1 for _ in open(path))
+            except Exception:
+                pass
         if not rows:
             lines.append(f"\n❌ อ่าน `{tf}` ไม่ได้ หรือไฟล์ว่าง")
             return "\n".join(lines)
         keys = set()
         for r in rows:
             keys.update(r.keys())
-        lines.append(f"\n**ไฟล์ train:** `{tf}` — keys: {sorted(keys)}")
+        lines.append(f"\n**ไฟล์ train:** `{tf}` ({tf.split('.')[-1]}) — keys: {sorted(keys)}")
         first = rows[0]
         if "text" in first:
             lines.append("✅ format: **text** (ChatML) — ใช้ได้เลย")
@@ -244,18 +255,18 @@ def inspect_dataset(dataset, train_file, val_file):
             lines.append("✅ format: **messages** (OpenAI) — ระบบแปลงเป็น ChatML ให้อัตโนมัติ")
         else:
             lines.append(f"⚠️ ต้องมี key 'text' หรือ 'messages' — keys ที่เจอ: {sorted(keys)}")
-        try:
-            count = sum(1 for _ in open(path))
-            lines.append(f"**จำนวน rows:** {count:,}")
-        except Exception:
-            pass
+        lines.append(f"**จำนวน rows:** {count:,}")
         sample = str(first.get("text") or _json.dumps(first.get("messages", first), ensure_ascii=False))
         lines.append(f"**ตัวอย่าง row แรก:** {sample[:250]}")
         # val check
         vf = val_file if val_file in files else None
         if vf:
             try:
-                vcount = sum(1 for _ in open(os.path.join(d, vf)))
+                vpath = os.path.join(d, vf)
+                if vf.endswith(".parquet"):
+                    vcount = len(pd.read_parquet(vpath))
+                else:
+                    vcount = sum(1 for _ in open(vpath))
                 lines.append(f"**Val file:** `{vf}` ({vcount:,} rows) ✅")
             except Exception:
                 pass
