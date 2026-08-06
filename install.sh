@@ -28,6 +28,39 @@ info "🚀 Train Studio Installer"
 info "Target dir : $APP_DIR"
 info "Run after  : $([ "$RUN_AFTER" = 1 ] && echo yes || echo no)"
 
+# ---------- 0. System prerequisites (auto apt install) ----------
+SYS_NEEDED=0
+command -v git  >/dev/null 2>&1 || SYS_NEEDED=1
+command -v curl >/dev/null 2>&1 || SYS_NEEDED=1
+if ! python3 -c "import ensurepip" >/dev/null 2>&1; then
+    SYS_NEEDED=1
+fi
+if [ "$SYS_NEEDED" = "1" ]; then
+    info "ติดตั้ง system packages ที่จำเป็น (python3-venv, git, curl)..."
+    if command -v apt-get >/dev/null 2>&1; then
+        if [ "$(id -u)" = "0" ]; then
+            apt-get update -qq && apt-get install -y -qq python3-venv python3-pip git curl || { err "apt install failed"; exit 1; }
+        else
+            sudo apt-get update -qq && sudo apt-get install -y -qq python3-venv python3-pip git curl || { err "apt install failed (ลอง sudo)"; exit 1; }
+        fi
+    elif command -v apk >/dev/null 2>&1; then
+        apk add --no-cache python3 py3-pip git curl || { err "apk install failed"; exit 1; }
+    elif command -v dnf >/dev/null 2>&1; then
+        dnf install -y python3-pip git curl || { err "dnf install failed"; exit 1; }
+    else
+        warn "ไม่รู้จัก package manager — ติดตั้ง python3-venv / git / curl ด้วยตัวเองก่อน"
+    fi
+    # fallback: บาง distro ต้องระบุ version (python3.12-venv)
+    if ! python3 -c "import ensurepip" >/dev/null 2>&1; then
+        PYV=$(python3 -c 'import sys; print(f"python3.{sys.version_info.minor}-venv")' 2>/dev/null || echo "python3-venv")
+        if [ "$(id -u)" = "0" ]; then
+            apt-get install -y -qq "$PYV" 2>/dev/null || true
+        else
+            sudo apt-get install -y -qq "$PYV" 2>/dev/null || true
+        fi
+    fi
+fi
+
 # ---------- 1. Python check ----------
 if ! command -v python3 >/dev/null 2>&1; then
   err "python3 not found — install Python 3.10+ first"
@@ -75,9 +108,10 @@ cd "$APP_DIR"
 # ---------- 5. venv ----------
 if [ ! -d venv ]; then
   info "Creating venv..."
-  python3 -m venv venv
+  python3 -m venv venv || { rm -rf venv; err "venv creation failed — ลอง: apt install python3-venv แล้วรันใหม่"; exit 1; }
 fi
-./venv/bin/pip install -q --upgrade pip
+./venv/bin/pip install -q --upgrade pip 2>/dev/null \
+  || { ./venv/bin/python -m ensurepip --upgrade 2>/dev/null; ./venv/bin/pip install -q --upgrade pip; }
 
 # ---------- 6. torch (ตาม CUDA) ----------
 if ! ./venv/bin/python -c "import torch" >/dev/null 2>&1; then
