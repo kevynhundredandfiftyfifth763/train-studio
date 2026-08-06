@@ -94,33 +94,50 @@ def on_hf_token_change(hf_token):
     save_state()
 
 
-# ---- Model download (background thread + log) ----
+# ---- Download (model/dataset) — background thread + log + auto-fill ----
 import threading
 
-DOWNLOAD_STATE = {"running": False, "model": "", "log": ""}
+DOWNLOAD_STATE = {"running": False, "kind": "", "repo": "", "log": "", "target": ""}
 
 
-def do_download_model(model, hf_token):
-    """กด download model จาก HF → /root/models/<name> (background)."""
+def _dir_size_gb(path):
+    total = 0
+    for root, _, files in os.walk(path):
+        for f in files:
+            try:
+                total += os.path.getsize(os.path.join(root, f))
+            except OSError:
+                pass
+    return total / 1e9
+
+
+def do_download(kind, repo, hf_token):
+    """kind = 'model' | 'dataset'. Download HF repo → /root/models|datasets/<name>"""
     if DOWNLOAD_STATE.get("running"):
-        return f"⚠️ กำลัง download `{DOWNLOAD_STATE['model']}` อยู่ — รอให้เสร็จก่อน"
-    if not model or os.path.exists(model):
-        return "Model เป็น local path อยู่แล้ว หรือช่องว่าง — ไม่ต้อง download"
-    name = model.rstrip("/").split("/")[-1]
-    log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs", f"download_{model.replace('/', '_')}.log")
+        return f"⚠️ กำลัง download `{DOWNLOAD_STATE['repo']}` อยู่ — รอให้เสร็จก่อน"
+    if not repo or os.path.exists(repo):
+        return f"{kind} เป็น local path อยู่แล้ว หรือช่องว่าง — ไม่ต้อง download"
+    base = "/root/models" if kind == "model" else "/root/datasets"
+    name = repo.rstrip("/").split("/")[-1]
+    target = f"{base}/{name}"
+    log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs",
+                            f"download_{kind}_{repo.replace('/', '_')}.log")
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
-    DOWNLOAD_STATE.update({"running": True, "model": model, "log": log_path})
-    threading.Thread(target=_dl_worker, args=(model, hf_token, log_path), daemon=True).start()
-    return f"⏳ เริ่ม download `{model}` → `/root/models/{name}`\n(กด '🔄 ตรวจสถานะ' เพื่อดูความคืบหน้า — ใหญ่ ~2-18GB ใช้เวลาหลายนาที)"
+    DOWNLOAD_STATE.update({"running": True, "kind": kind, "repo": repo, "log": log_path, "target": target})
+    threading.Thread(target=_dl_worker, args=(kind, repo, hf_token, target, log_path), daemon=True).start()
+    return f"⏳ เริ่ม download {kind} `{repo}` → `{target}`\n(กด '🔄 ตรวจสถานะ' เพื่อดูความคืบหน้า)"
 
 
-def _dl_worker(model, hf_token, log_path):
+def _dl_worker(kind, repo, hf_token, target, log_path):
     try:
         if hf_token:
             os.environ["HF_TOKEN"] = hf_token
         from huggingface_hub import snapshot_download
-        target = f"/root/models/{model.rstrip('/').split('/')[-1]}"
-        p = snapshot_download(repo_id=model, local_dir=target)
+        p = snapshot_download(
+            repo_id=repo,
+            repo_type="dataset" if kind == "dataset" else "model",
+            local_dir=target,
+        )
         with open(log_path, "w") as f:
             f.write(f"DONE: {p}")
     except Exception as e:
@@ -131,19 +148,27 @@ def _dl_worker(model, hf_token, log_path):
 
 
 def do_dl_status():
+    """สถานะ download — ถ้าเสร็จจะ auto-fill path เข้าช่อง model/dataset."""
     if not DOWNLOAD_STATE.get("log"):
-        return "*(ยังไม่มีการ download — ใส่ HF repo id แล้วกด ⬇️)*"
+        return "*(ยังไม่มีการ download — ใส่ HF repo id แล้วกด ⬇️)*", gr.update(), gr.update()
     log_path = DOWNLOAD_STATE["log"]
+    kind = DOWNLOAD_STATE.get("kind", "")
+    done_path = None
     if os.path.exists(log_path):
         with open(log_path) as f:
             content = f.read().strip()
         if content.startswith("DONE"):
-            return f"✅ **Download เสร็จ:** `{content[5:]}`\n\nตอนนี้เลือก path นั้นในช่อง Model ได้เลย (หรือกด 📁 Browse)"
-        if content.startswith("ERROR"):
-            return f"❌ **Download error:** {content[6:]}"
-    if DOWNLOAD_STATE.get("running"):
-        return f"⏳ กำลัง download `{DOWNLOAD_STATE['model']}`... (ไฟล์ใหญ่ ใช้เวลาหลายนาที — กด 🔄 อีกครั้งเพื่อเช็ค)"
-    return f"📁 สถานะ: รอ/เสร็จแล้ว (log: {log_path})"
+            done_path = content[5:]
+        elif content.startswith("ERROR"):
+            return f"❌ **Download error:** {content[6:]}", gr.update(), gr.update()
+    if DOWNLOAD_STATE.get("running") or (not done_path):
+        gb = _dir_size_gb(DOWNLOAD_STATE.get("target", ""))
+        return (f"⏳ กำลัง download `{DOWNLOAD_STATE['repo']}`... โหลดไปแล้ว **{gb:.1f} GB** "
+                f"(กด 🔄 อีกครั้งเพื่อเช็ค)", gr.update(), gr.update())
+    # เสร็จแล้ว — auto-fill path เข้าช่อง
+    if kind == "model":
+        return f"✅ **Download model เสร็จ:** `{done_path}`\n\nได้เลือกให้อัตโนมัติแล้ว — กด ▶️ Start ได้เลย", gr.update(value=done_path), gr.update()
+    return f"✅ **Download dataset เสร็จ:** `{done_path}`\n\nได้เลือกให้อัตโนมัติแล้ว — กด ▶️ Start ได้เลย", gr.update(), gr.update(value=done_path)
 
 
 def gpu_choices():
@@ -391,11 +416,13 @@ with gr.Blocks(title="Train Studio") as demo:
                               value=state_val("job_name", auto_job_name(
                                   state_val("model", DEFAULT_MODEL), state_val("dataset", DEFAULT_DATA))))
         with gr.Row():
-            dl_model_btn = gr.Button("⬇️ Download Model ไปเครื่อง (จาก HF)", variant="secondary")
+            dl_model_btn = gr.Button("⬇️ Download Model (จาก HF)", variant="secondary")
+            dl_dataset_btn = gr.Button("⬇️ Download Dataset (จาก HF)", variant="secondary")
             dl_status_btn = gr.Button("🔄 ตรวจสถานะ download")
-        dl_out = gr.Markdown("*(ยังไม่มีการ download — ใส่ HF repo id ในช่อง Model แล้วกด ⬇️ Download)*")
-        dl_model_btn.click(do_download_model, inputs=[model, hf_token], outputs=dl_out)
-        dl_status_btn.click(do_dl_status, outputs=dl_out)
+        dl_out = gr.Markdown("*(ยังไม่มีการ download — ใส่ HF repo id ในช่อง แล้วกด ⬇️)*")
+        dl_model_btn.click(lambda m, t: do_download("model", m, t), inputs=[model, hf_token], outputs=dl_out)
+        dl_dataset_btn.click(lambda d, t: do_download("dataset", d, t), inputs=[dataset, hf_token], outputs=dl_out)
+        dl_status_btn.click(do_dl_status, outputs=[dl_out, model, dataset])
         preview_btn = gr.Button("👀 Preview Dataset", variant="secondary")
         preview_out = gr.Markdown()
         preview_btn.click(do_preview, inputs=[model, dataset, hf_token, train_file, val_file], outputs=preview_out)
